@@ -3,7 +3,7 @@
 #include "smem_ops.h"
 
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 template<typename T, typename F>
 __global__ void smem_row_shuffle(int m, int n, T* d, F s) {

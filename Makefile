@@ -1,9 +1,7 @@
 INC_DIR = include
 OBJ_DIR = build
-OBJS = $(OBJ_DIR)/test_213inplace.o\
-		$(OBJ_DIR)/tensor_util.o\
+OBJSLIB = $(OBJ_DIR)/test_213inplace.o\
 		$(OBJ_DIR)/transpose.o\
-		$(OBJ_DIR)/transpose_213.o\
 		$(OBJ_DIR)/introspect.o\
 		$(OBJ_DIR)/rotate.o\
 		$(OBJ_DIR)/permute.o\
@@ -13,8 +11,11 @@ OBJS = $(OBJ_DIR)/test_213inplace.o\
 		$(OBJ_DIR)/save_array.o\
 		$(OBJ_DIR)/gcd.o\
 		$(OBJ_DIR)/reduced_math.o\
-		$(OBJ_DIR)/skinny_213.o\
-		$(OBJ_DIR)/cudacheck.o
+		$(OBJ_DIR)/cudacheck.o\
+		$(OBJ_DIR)/tensor_util.o\
+
+OBJSGEN = $(OBJ_DIR)/gen_ans.o \
+		$(OBJ_DIR)/tensor_util.o
 
 CC = g++
 NVCC = nvcc
@@ -25,10 +26,13 @@ all: mkdir test_213inplace
 mkdir:
 	mkdir -p $(OBJ_DIR)
 
-test_213inplace: $(OBJS)
-	$(NVCC) $(OBJS) -o $@
+test_213inplace: $(OBJSLIB)
+	$(NVCC) $(OBJSLIB) -o $@
 	
--include $(OBJS:.o=.d)
+gen_ans: $(OBJSGEN)
+	$(CC) $(CFLAGS) $(OBJSGEN) -o $@
+	
+-include $(OBJSLIB:.o=.d)
 
 $(OBJ_DIR)/%.o : src/%.cu
 	$(NVCC) -c $(CFLAGS) -o $(OBJ_DIR)/$*.o $<

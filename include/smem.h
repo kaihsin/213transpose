@@ -1,5 +1,7 @@
+#pragma once
+
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 template<class T>
 struct shared_memory{

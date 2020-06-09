@@ -1,4 +1,3 @@
-#include "skinny.h"
 #include "introspect.h"
 #include "index.h"
 #include "gcd.h"
@@ -9,12 +8,116 @@
 
 #include <iostream>
 #include <cstdio>
-#include <cuda.h>
 
 #include "save_array.h"
 
 namespace inplace {
-namespace _2d {
+namespace detail {
+
+namespace c2r {
+
+struct fused_preop {
+    reduced_divisor m;
+    reduced_divisor b;
+    __host__  fused_preop(int _m, int _b) : m(_m), b(_b) {}
+    __host__ __device__
+    int operator()(const int& i, const int& j) {
+        return (int)m.mod(i + (int)b.div(j));
+    }
+};
+
+//This shuffler exists for cases where m, n are large enough to cause overflow
+struct long_shuffle {
+    int m, n, k;
+    reduced_divisor_64 b;
+    reduced_divisor c;
+    __host__
+    long_shuffle(int _m, int _n, int _c, int _k) : m(_m), n(_n), k(_k),
+                                                   b(_n/_c), c(_c) {}
+    int i;
+    __host__ __device__ 
+    void set_i(const int& _i) {
+        i = _i;
+    }
+    __host__ __device__
+    int f(const int& j) {
+        int r = j + i * (n - 1);
+        //The (int) casts here prevent unsigned promotion
+        //and the subsequent underflow: c implicitly casts
+        //int - unsigned int to
+        //unsigned int - unsigned int
+        //rather than to
+        //int - int
+        //Which leads to underflow if the result is negative.
+        if (i - (int)c.mod(j) <= m - (int)c.get()) {
+            return r;
+        } else {
+            return r + m;
+        }
+    }
+    
+    __host__ __device__
+    int operator()(const int& j) {
+        int fij = f(j);
+        unsigned int fijdivc, fijmodc;
+        c.divmod(fij, fijdivc, fijmodc);
+        int term_1 = b.mod((long long)k * (long long)fijdivc);
+        int term_2 = ((int)fijmodc) * (int)b.get();
+        return term_1+term_2;
+    }
+};
+
+struct fused_postop {
+    reduced_divisor m;
+    int n, c;
+    __host__ 
+    fused_postop(int _m, int _n, int _c) : m(_m), n(_n), c(_c) {}
+    __host__ __device__
+    int operator()(const int& i, const int& j) {
+        return (int)m.mod(i * n - (int)m.div(i * c) + j);
+    }
+};
+
+
+}
+
+namespace r2c {
+
+struct fused_preop {
+    reduced_divisor a;
+    reduced_divisor c;
+    reduced_divisor m;
+    int q;
+    __host__ 
+    fused_preop(int _a, int _c, int _m, int _q) : a(_a) , c(_c), m(_m), q(_q) {}
+    __host__ __device__ __forceinline__
+    int p(const int& i) {
+        int cm1 = (int)c.get() - 1;
+        int term_1 = int(a.get()) * (int)c.mod(cm1 * i);
+        int term_2 = int(a.mod(int(c.div(cm1+i))*q));
+        return term_1 + term_2;
+        
+    }
+    __host__ __device__
+    int operator()(const int& i, const int& j) {
+        int idx = m.mod(i + (int)m.get() - (int)m.mod(j));
+        return p(idx);
+    }
+};
+
+struct fused_postop {
+    reduced_divisor m;
+    reduced_divisor b;
+    __host__  fused_postop(int _m, int _b) : m(_m), b(_b) {}
+    __host__ __device__
+    int operator()(const int& i, const int& j) {
+        return (int)m.mod(i + (int)m.get() - (int)b.div(j));
+    }
+};
+
+
+}
+
 
 template<typename T, typename F, int U>
 __global__ void long_row_shuffle(int m, int n, int i, T* d, T* tmp, F s) {
@@ -58,31 +161,16 @@ __global__ void short_column_permute(int m, int n, T* d, F s) {
 }
 
 template<typename T, typename F>
-__global__ void register_row_shuffle(int m, int n, T* d, F s) {
-	__shared__ T tmp[1024];
-	row_major_index rm(m, n);
-	int i = threadIdx.x;
-    s.set_i(i);
-	for (int j = threadIdx.y; j < n; j += blockDim.y) {
-		tmp[i * n + j] = d[rm(i, s(j))];
-	}
-	__syncthreads();
-	for (int j = threadIdx.y; j < n; j += blockDim.y) {
-		d[rm(i, j)] = tmp[i * n + j];
-	}
-}
-
-template<typename T, typename F>
-void skinny_row_op(cudaStream_t& stream, F s, int m, int n, T* d, T* tmp) {
+void skinny_row_op(F s, int m, int n, T* d, T* tmp) {
     for(int i = 0; i < m; i++) {
-        long_row_shuffle<T, F, 4><<<(n-1)/(256*4)+1,256, 0, stream>>>(m, n, i, d, tmp, s);
+        long_row_shuffle<T, F, 4><<<(n-1)/(256*4)+1,256>>>(m, n, i, d, tmp, s);
         cudaMemcpy(d + n * i, tmp, sizeof(T) * n, cudaMemcpyDeviceToDevice);
 
     }
 }
 
 template<typename T, typename F>
-void skinny_col_op(cudaStream_t& stream, F s, int m, int n, T* d) {
+void skinny_col_op(F s, int m, int n, T* d) {
     int n_threads = 32;
     // XXX Potential optimization here: figure out how many blocks/sm
     // we should launch
@@ -90,14 +178,14 @@ void skinny_col_op(cudaStream_t& stream, F s, int m, int n, T* d) {
     dim3 grid_dim(n_blocks);
     dim3 block_dim(n_threads, m);
     short_column_permute<<<grid_dim, block_dim,
-        sizeof(T) * m * n_threads, stream>>>(m, n, d, s);
+        sizeof(T) * m * n_threads>>>(m, n, d, s);
 }
 
 
 namespace c2r {
 
 template<typename T>
-void skinny_transpose(cudaStream_t& stream, T* data, T* temp, int m, int n) {
+void skinny_transpose(T* data, int m, int n) {
     //std::cout << "Doing Skinny C2R transpose of " << m << ", " << n << std::endl;
 	//printf("Doing Skinny C2R transpose\n");
 
@@ -111,30 +199,28 @@ void skinny_transpose(cudaStream_t& stream, T* data, T* temp, int m, int n) {
     }
 
     if (c > 1) {
-        skinny_col_op(stream, fused_preop(m, n/c), m, n, data);
+        skinny_col_op(fused_preop(m, n/c), m, n, data);
     }
-    //T* tmp;
-    //cudaMalloc(&tmp, sizeof(T) * n);
-	row_major_index rm(m, n);
-	
-    skinny_row_op(stream, long_shuffle(m, n, c, k), m, n, data, temp);
-    //cudaFree(tmp);
-    skinny_col_op(stream, fused_postop(m, n, c), m, n, data);
+    T* tmp;
+    cudaMalloc(&tmp, sizeof(T) * n);
+    skinny_row_op(long_shuffle(m, n, c, k), m, n, data, tmp);
+    cudaFree(tmp);
+    skinny_col_op(fused_postop(m, n, c), m, n, data);
 
 }
 
 
-template void skinny_transpose(cudaStream_t& stream, float* data, float* temp, int m, int n);
-template void skinny_transpose(cudaStream_t& stream, double* data, double* temp, int m, int n);
-template void skinny_transpose(cudaStream_t& stream, int* data, int* temp, int m, int n);
-template void skinny_transpose(cudaStream_t& stream, long long* temp, long long* data, int m, int n);
+template void skinny_transpose(float* data, int m, int n);
+template void skinny_transpose(double* data, int m, int n);
+template void skinny_transpose(int* data, int m, int n);
+template void skinny_transpose(long long* data, int m, int n);
 
 }
 
 namespace r2c {
 
 template<typename T>
-void skinny_transpose(cudaStream_t& stream, T* data, T* temp, int m, int n) {
+void skinny_transpose(T* data, int m, int n) {
     //std::cout << "Doing Skinny R2C transpose of " << m << ", " << n << std::endl;
 	//printf("Doing Skinny R2C transpose\n");
 
@@ -147,20 +233,20 @@ void skinny_transpose(cudaStream_t& stream, T* data, T* temp, int m, int n) {
         q = t;
     }
 
-    skinny_col_op(stream, fused_preop(m/c, c, m, q), m, n, data);
-    //T* tmp;
-    //cudaMalloc(&tmp, sizeof(T) * n);
-    skinny_row_op(stream, shuffle(m, n, c, 0), m, n, data, temp);
-    //cudaFree(tmp);
+    skinny_col_op(fused_preop(m/c, c, m, q), m, n, data);
+    T* tmp;
+    cudaMalloc(&tmp, sizeof(T) * n);
+    skinny_row_op(shuffle(m, n, c, 0), m, n, data, tmp);
+    cudaFree(tmp);
     if (c > 1) {
-        skinny_col_op(stream, fused_postop(m, n/c), m, n, data);
+        skinny_col_op(fused_postop(m, n/c), m, n, data);
     }
 }
 
-template void skinny_transpose(cudaStream_t& stream, float* data, float* temp, int m, int n);
-template void skinny_transpose(cudaStream_t& stream, double* data, double* temp, int m, int n);
-template void skinny_transpose(cudaStream_t& stream, int* data, int* temp, int m, int n);
-template void skinny_transpose(cudaStream_t& stream, long long* temp, long long* data, int m, int n);
+template void skinny_transpose(float* data, int m, int n);
+template void skinny_transpose(double* data, int m, int n);
+template void skinny_transpose(int* data, int m, int n);
+template void skinny_transpose(long long* data, int m, int n);
 
 }
 

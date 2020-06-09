@@ -201,7 +201,6 @@ rotate.o : src/rotate.cu \
     /usr/include/c++/4.8.2/bits/istream.tcc \
     /usr/include/c++/4.8.2/iterator \
     /usr/include/c++/4.8.2/bits/stream_iterator.h \
-    /usr/local/cuda/bin/..//include/cuda.h \
     include/index.h \
     include/reduced_math.h \
     include/util.h \
@@ -210,6 +209,7 @@ rotate.o : src/rotate.cu \
     /usr/local/cuda/bin/..//include/thrust/detail/config/config.h \
     /usr/local/cuda/bin/..//include/thrust/detail/config/simple_defines.h \
     /usr/local/cuda/bin/..//include/thrust/detail/config/compiler.h \
+    /usr/local/cuda/bin/..//include/cuda.h \
     /usr/local/cuda/bin/..//include/thrust/detail/config/host_system.h \
     /usr/local/cuda/bin/..//include/thrust/detail/config/device_system.h \
     /usr/local/cuda/bin/..//include/thrust/detail/config/host_device.h \

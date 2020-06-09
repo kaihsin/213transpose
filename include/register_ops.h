@@ -3,7 +3,7 @@
 #include "index.h"
 
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 template<typename T, int R, typename F>
 struct gather_row_impl {

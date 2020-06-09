@@ -9,7 +9,7 @@
 
 namespace inplace {
 
-namespace _2d {
+namespace detail {
 
 
 void find_divisor(unsigned int denom,
@@ -51,11 +51,11 @@ struct reduced_divisor_impl {
     U y;
     __host__ __forceinline__
     reduced_divisor_impl(U _y) : y(_y) {
-        _2d::find_divisor(y, mul_coeff, shift_coeff);
+        detail::find_divisor(y, mul_coeff, shift_coeff);
     }
     __host__ __device__ __forceinline__
     U div(U x) const {
-        return (mul_coeff) ? _2d::umulhi(x, mul_coeff) >> shift_coeff : x;
+        return (mul_coeff) ? detail::umulhi(x, mul_coeff) >> shift_coeff : x;
     }
     __host__ __device__ __forceinline__
     U mod(U x) const {

@@ -6,21 +6,23 @@
 
 namespace inplace {
 
-namespace _2d {
-
 namespace c2r {
-void transpose(cudaStream_t& stream, bool row_major, float* data, float* temp, int m, int n);
-void transpose(cudaStream_t& stream, bool row_major, double* data,  double* temp, int m, int n);
+void transpose(bool row_major, int* data, int m, int n);
+void transpose(bool row_major, long long* data, int m, int n);
+void transpose(bool row_major, float* data, int m, int n);
+void transpose(bool row_major, double* data, int m, int n);
 }
 namespace r2c {
-void transpose(cudaStream_t& stream, bool row_major, float* data, float* temp, int m, int n);
-void transpose(cudaStream_t& stream, bool row_major, double* data, double* temp, int m, int n);
+void transpose(bool row_major, int* data, int m, int n);
+void transpose(bool row_major, long long* data, int m, int n);
+void transpose(bool row_major, float* data, int m, int n);
+void transpose(bool row_major, double* data, int m, int n);
 }
 
-void transpose(cudaStream_t& stream, bool row_major, float* data, float* temp, int m, int n);
-void transpose(cudaStream_t& stream, bool row_major, double* data, double* temp, int m, int n);
-
-}
+void transpose(bool row_major, int* data, int m, int n);
+void transpose(bool row_major, long long* data, int m, int n);
+void transpose(bool row_major, float* data, int m, int n);
+void transpose(bool row_major, double* data, int m, int n);
 
 }
 

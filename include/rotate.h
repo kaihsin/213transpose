@@ -2,15 +2,14 @@
 #include <stdio.h>
 #include <iostream>
 #include <iterator>
-#include <cuda.h>
 #include "index.h"
 #include "util.h"
 
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 template<typename F, typename T>
-void rotate(cudaStream_t& stream, F f, int m, int n, T* data);
+void rotate(F f, int m, int n, T* data);
 
 }
 }

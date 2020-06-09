@@ -3,7 +3,7 @@
 #include <cstdio>
 
 namespace inplace {
-namespace _2d {
+namespace detail {
     
 template<typename Fn>
 void scatter_cycles(Fn f, std::vector<int>& heads, std::vector<int>& lens) {
@@ -84,16 +84,16 @@ __global__ void cycle_row_permute(F f, T* data, int* heads,
 }
 
 template<typename T, typename F>
-void scatter_permute(cudaStream_t& stream, F f, int m, int n, T* data, T* tmp) {
+void scatter_permute(F f, int m, int n, T* data, int* tmp) {
     std::vector<int> heads;
     std::vector<int> lens;
     scatter_cycles(f, heads, lens);
-    int* d_heads = (int*)tmp;
-    int* d_lens = (int*)tmp + m / 2;
-    cudaMemcpyAsync(d_heads, heads.data(), sizeof(int)*heads.size(),
-               cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(d_lens, lens.data(), sizeof(int)*lens.size(),
-               cudaMemcpyHostToDevice, stream);
+    int* d_heads = tmp;
+    int* d_lens = tmp + m / 2;
+    cudaMemcpy(d_heads, heads.data(), sizeof(int)*heads.size(),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(d_lens, lens.data(), sizeof(int)*lens.size(),
+               cudaMemcpyHostToDevice);
     int n_threads_x = 256;
     int n_threads_y = 1024/n_threads_x;
     
@@ -101,20 +101,20 @@ void scatter_permute(cudaStream_t& stream, F f, int m, int n, T* data, T* tmp) {
     int n_blocks_y = div_up(heads.size(), n_threads_y);
     cycle_row_permute<T, F, 4>
         <<<dim3(n_blocks_x, n_blocks_y),
-        dim3(n_threads_x, n_threads_y), 0, stream>>>
+        dim3(n_threads_x, n_threads_y)>>>
         (f, data, d_heads, d_lens, heads.size());
 }
 
 
-template void scatter_permute(cudaStream_t& stream, c2r::scatter_postpermuter, int, int, float*, float*);
-template void scatter_permute(cudaStream_t& stream, c2r::scatter_postpermuter, int, int, double*, double*);
-//template void scatter_permute(cudaStream_t& stream, c2r::scatter_postpermuter, int, int, int*, int*);
-//template void scatter_permute(cudaStream_t& stream, c2r::scatter_postpermuter, int, int, long long*, long long*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, float*, int*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, double*, int*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, int*, int*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, long long*, int*);
 
-template void scatter_permute(cudaStream_t& stream, r2c::scatter_prepermuter, int, int, float*, float*);
-template void scatter_permute(cudaStream_t& stream, r2c::scatter_prepermuter, int, int, double*, double*);
-//template void scatter_permute(cudaStream_t& stream, r2c::scatter_prepermuter, int, int, int*, int*);
-//template void scatter_permute(cudaStream_t& stream, r2c::scatter_prepermuter, int, int, long long*, long long*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, float*, int*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, double*, int*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, int*, int*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, long long*, int*);
 
 
 }

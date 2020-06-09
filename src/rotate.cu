@@ -3,7 +3,7 @@
 #include "equations.h"
 
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 __device__ __forceinline__
 unsigned int ctz(unsigned int x) {
@@ -161,35 +161,35 @@ __global__ void fine_col_rotate(F fn, int m, int n, T* d) {
 }
 
 template<typename F, typename T>
-void rotate(cudaStream_t& stream, F fn, int m, int n, T* data) {
+void rotate(F fn, int m, int n, T* data) {
     int n_blocks = div_up(n, 32);
     dim3 block_dim(32, 32);
     if (fn.fine()) {
-        fine_col_rotate<<<n_blocks, block_dim, 0, stream>>>(fn, m, n, data);
+        fine_col_rotate<<<n_blocks, block_dim>>>(fn, m, n, data);
     }
-    coarse_col_rotate<<<n_blocks, dim3(32, 16), 0, stream>>>(
+    coarse_col_rotate<<<n_blocks, dim3(32, 16)>>>(
         fn, m, n, data);
 }
 
-template void rotate(cudaStream_t& stream, c2r::prerotator, int, int, float*);
-template void rotate(cudaStream_t& stream, c2r::prerotator, int, int, double*);
-template void rotate(cudaStream_t& stream, c2r::prerotator, int, int, int*);
-template void rotate(cudaStream_t& stream, c2r::prerotator, int, int, long long*);
+template void rotate(c2r::prerotator, int, int, float*);
+template void rotate(c2r::prerotator, int, int, double*);
+template void rotate(c2r::prerotator, int, int, int*);
+template void rotate(c2r::prerotator, int, int, long long*);
 
-template void rotate(cudaStream_t& stream, c2r::postrotator, int, int, float*);
-template void rotate(cudaStream_t& stream, c2r::postrotator, int, int, double*);
-template void rotate(cudaStream_t& stream, c2r::postrotator, int, int, int*);
-template void rotate(cudaStream_t& stream, c2r::postrotator, int, int, long long*);
+template void rotate(c2r::postrotator, int, int, float*);
+template void rotate(c2r::postrotator, int, int, double*);
+template void rotate(c2r::postrotator, int, int, int*);
+template void rotate(c2r::postrotator, int, int, long long*);
 
-template void rotate(cudaStream_t& stream, r2c::prerotator, int, int, float*);
-template void rotate(cudaStream_t& stream, r2c::prerotator, int, int, double*);
-template void rotate(cudaStream_t& stream, r2c::prerotator, int, int, int*);
-template void rotate(cudaStream_t& stream, r2c::prerotator, int, int, long long*);
+template void rotate(r2c::prerotator, int, int, float*);
+template void rotate(r2c::prerotator, int, int, double*);
+template void rotate(r2c::prerotator, int, int, int*);
+template void rotate(r2c::prerotator, int, int, long long*);
 
-template void rotate(cudaStream_t& stream, r2c::postrotator, int, int, float*);
-template void rotate(cudaStream_t& stream, r2c::postrotator, int, int, double*);
-template void rotate(cudaStream_t& stream, r2c::postrotator, int, int, int*);
-template void rotate(cudaStream_t& stream, r2c::postrotator, int, int, long long*);
+template void rotate(r2c::postrotator, int, int, float*);
+template void rotate(r2c::postrotator, int, int, double*);
+template void rotate(r2c::postrotator, int, int, int*);
+template void rotate(r2c::postrotator, int, int, long long*);
 
 
 }

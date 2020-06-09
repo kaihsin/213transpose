@@ -1,7 +1,7 @@
 #include <stdexcept>
 
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 // Count leading zeros - start from most significant bit.
 int clz(int x) {

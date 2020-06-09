@@ -4,7 +4,7 @@
 #include "gcd.h"
 
 namespace inplace {
-namespace _2d {
+namespace detail {
 
 namespace c2r {
 
