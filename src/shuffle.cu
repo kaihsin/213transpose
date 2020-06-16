@@ -1,3 +1,4 @@
+#include "introspect.h"
 #include "equations.h"
 #include "util.h"
 #include "memory_ops.h"
