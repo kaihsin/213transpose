@@ -5,6 +5,7 @@ OBJSLIB = $(OBJ_DIR)/test_213inplace.o\
 		$(OBJ_DIR)/introspect.o\
 		$(OBJ_DIR)/rotate.o\
 		$(OBJ_DIR)/permute.o\
+		$(OBJ_DIR)/shuffle.o\
 		$(OBJ_DIR)/skinny.o\
 		$(OBJ_DIR)/memory_ops.o\
 		$(OBJ_DIR)/smem_ops.o\
@@ -19,7 +20,7 @@ OBJSGEN = $(OBJ_DIR)/gen_ans.o \
 
 CC = g++
 NVCC = nvcc
-CFLAGS = -I$(INC_DIR) -std=c++11
+CFLAGS = -I$(INC_DIR) -std=c++11 -O3
 
 all: mkdir test_213inplace
 

@@ -120,36 +120,36 @@ struct fused_postop {
 
 
 template<typename T, typename F, int U>
-__global__ void long_row_shuffle(int m, int n, int i, T* d, T* tmp, F s) {
-    row_major_index rm(m, n);
+__global__ void long_row_shuffle(int d2, int d1, int i, T* d, T* tmp, F s) {
+    row_major_index rm(d2, d1);
     s.set_i(i);
     int global_id = threadIdx.x + blockIdx.x * blockDim.x;
     int grid_size = gridDim.x * blockDim.x;
     int j = global_id;
-    while(j + U * grid_size < n) {
+    while(j + U * grid_size < d1) {
         #pragma unroll
         for(int k = 0; k < U; k++) {
             tmp[j] = d[rm(i, s(j))];
             j += grid_size;
         }
     }
-    while(j < n) {
+    while(j < d1) {
         tmp[j] = d[rm(i, s(j))];
         j += grid_size;
     }
 }
 
 template<typename T, typename F>
-__global__ void short_column_permute(int m, int n, T* d, F s) {
+__global__ void short_column_permute(int d2, int d1, T* d, F s) {
     T* smem = shared_memory<T>();
-    row_major_index rm(m, n);
+    row_major_index rm(d2, d1);
     row_major_index blk(blockDim.y, blockDim.x);
     int i = threadIdx.y; // One block tall by REQUIREMENT
     int grid_size = blockDim.x * gridDim.x;
     
-    if (i < m) {
+    if (i < d2) {
         for(int j = threadIdx.x + blockIdx.x * blockDim.x;
-            j < n; j+= grid_size) {
+            j < d1; j+= grid_size) {
             
             smem[blk(i, threadIdx.x)] = d[rm(i, j)];
             __syncthreads();
@@ -161,92 +161,91 @@ __global__ void short_column_permute(int m, int n, T* d, F s) {
 }
 
 template<typename T, typename F>
-void skinny_row_op(F s, int m, int n, T* d, T* tmp) {
-    for(int i = 0; i < m; i++) {
-        long_row_shuffle<T, F, 4><<<(n-1)/(256*4)+1,256>>>(m, n, i, d, tmp, s);
-        cudaMemcpy(d + n * i, tmp, sizeof(T) * n, cudaMemcpyDeviceToDevice);
+void skinny_row_op(F s, int d2, int d1, T* d, T* tmp) {
+    for(int i = 0; i < d2; i++) {
+        long_row_shuffle<T, F, 4><<<(d1-1)/(256*4)+1,256>>>(d2, d1, i, d, tmp, s);
+        cudaMemcpy(d + d1 * i, tmp, sizeof(T) * d1, cudaMemcpyDeviceToDevice);
 
     }
 }
 
 template<typename T, typename F>
-void skinny_col_op(F s, int m, int n, T* d) {
+void skinny_col_op(F s, int d2, int d1, T* d) {
     int n_threads = 32;
     // XXX Potential optimization here: figure out how many blocks/sm
     // we should launch
     int n_blocks = n_sms()*8;
     dim3 grid_dim(n_blocks);
-    dim3 block_dim(n_threads, m);
+    dim3 block_dim(n_threads, d2);
     short_column_permute<<<grid_dim, block_dim,
-        sizeof(T) * m * n_threads>>>(m, n, d, s);
+        sizeof(T) * d2 * n_threads>>>(d2, d1, d, s);
 }
 
 
 namespace c2r {
 
 template<typename T>
-void skinny_transpose(T* data, int m, int n) {
-    //std::cout << "Doing Skinny C2R transpose of " << m << ", " << n << std::endl;
-	//printf("Doing Skinny C2R transpose\n");
+void skinny_transpose(T* data, int d1, int d2, int d3) {
+    //std::cout << "Doing Skinny C2R transpose of " << d2 << ", " << d1 << std::endl;
+	//printf("Doing Skinny C2R transpose\d1");
 
-    assert(m <= 32);
+    assert(d2 <= 32);
     int c, t, k;
-    extended_gcd(m, n, c, t);
+    extended_gcd(d2, d1, c, t);
     if (c > 1) {
-        extended_gcd(m/c, n/c, t, k);
+        extended_gcd(d2/c, d1/c, t, k);
     } else {
         k = t;
     }
 
     if (c > 1) {
-        skinny_col_op(fused_preop(m, n/c), m, n, data);
+        skinny_col_op(fused_preop(d2, d1/c), d2, d1, data);
     }
     T* tmp;
-    cudaMalloc(&tmp, sizeof(T) * n);
-    skinny_row_op(long_shuffle(m, n, c, k), m, n, data, tmp);
+    cudaMalloc(&tmp, sizeof(T) * d1);
+    skinny_row_op(long_shuffle(d2, d1, c, k), d2, d1, data, tmp);
     cudaFree(tmp);
-    skinny_col_op(fused_postop(m, n, c), m, n, data);
+    skinny_col_op(fused_postop(d2, d1, c), d2, d1, data);
 
 }
 
-
-template void skinny_transpose(float* data, int m, int n);
-template void skinny_transpose(double* data, int m, int n);
-template void skinny_transpose(int* data, int m, int n);
-template void skinny_transpose(long long* data, int m, int n);
+template void skinny_transpose(int*, int, int, int);
+template void skinny_transpose(long long*, int, int, int);
+template void skinny_transpose(float*, int, int, int);
+template void skinny_transpose(double*, int, int, int);
 
 }
 
 namespace r2c {
 
 template<typename T>
-void skinny_transpose(T* data, int m, int n) {
-    //std::cout << "Doing Skinny R2C transpose of " << m << ", " << n << std::endl;
-	//printf("Doing Skinny R2C transpose\n");
+void skinny_transpose(T* data, int d1, int d2, int d3) {
+    //std::cout << "Doing Skinny R2C transpose of " << d2 << ", " << d1 << std::endl;
+	//printf("Doing Skinny R2C transpose\d1");
 
-    assert(m <= 32);
+    assert(d2 <= 32);
     int c, t, q;
-    extended_gcd(n, m, c, t);
+    extended_gcd(d1, d2, c, t);
     if (c > 1) {
-        extended_gcd(n/c, m/c, t, q);
+        extended_gcd(d1/c, d2/c, t, q);
     } else {
         q = t;
     }
 
-    skinny_col_op(fused_preop(m/c, c, m, q), m, n, data);
+    skinny_col_op(fused_preop(d2/c, c, d2, q), d2, d1, data);
     T* tmp;
-    cudaMalloc(&tmp, sizeof(T) * n);
-    skinny_row_op(shuffle(m, n, c, 0), m, n, data, tmp);
+    cudaMalloc(&tmp, sizeof(T) * d1);
+    skinny_row_op(shuffle(d2, d1, c, 0), d2, d1, data, tmp);
     cudaFree(tmp);
     if (c > 1) {
-        skinny_col_op(fused_postop(m, n/c), m, n, data);
+        skinny_col_op(fused_postop(d2, d1/c), d2, d1, data);
     }
 }
 
-template void skinny_transpose(float* data, int m, int n);
-template void skinny_transpose(double* data, int m, int n);
-template void skinny_transpose(int* data, int m, int n);
-template void skinny_transpose(long long* data, int m, int n);
+template void skinny_transpose(int*, int, int, int);
+template void skinny_transpose(long long*, int, int, int);
+template void skinny_transpose(float*, int, int, int);
+template void skinny_transpose(double*, int, int, int);
 
 }
 

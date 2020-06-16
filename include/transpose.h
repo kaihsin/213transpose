@@ -1,28 +1,23 @@
 #pragma once
 
-#include "introspect.h"
-#include "index.h"
-#include "equations.h"
-
 namespace inplace {
 
+<typename T>
+void transpose(T* data, int d1, int d2, int d3);
+
 namespace c2r {
-void transpose(bool row_major, int* data, int m, int n);
-void transpose(bool row_major, long long* data, int m, int n);
-void transpose(bool row_major, float* data, int m, int n);
-void transpose(bool row_major, double* data, int m, int n);
-}
-namespace r2c {
-void transpose(bool row_major, int* data, int m, int n);
-void transpose(bool row_major, long long* data, int m, int n);
-void transpose(bool row_major, float* data, int m, int n);
-void transpose(bool row_major, double* data, int m, int n);
+
+<typename T>
+void transpose(T* data, int d1, int d2, int d3);
+
 }
 
-void transpose(bool row_major, int* data, int m, int n);
-void transpose(bool row_major, long long* data, int m, int n);
-void transpose(bool row_major, float* data, int m, int n);
-void transpose(bool row_major, double* data, int m, int n);
+namespace r2c {
+
+<typename T>
+void transpose(T* data, int d1, int d2, int d3);
+
+}
 
 }
 

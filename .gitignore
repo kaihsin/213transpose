@@ -1,2 +1,6 @@
-build
-testcase
+/build
+/testcase
+gen_ans
+read_bin
+src/read_bin.cpp
+test_213inplace
