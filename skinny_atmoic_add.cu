@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <cstdio>
-#include <cooperative_groups.h>
 
 #include "save_array.h"
 #include "cudacheck.h"
@@ -120,13 +119,15 @@ struct fused_postop {
 
 }
 
+
 template<typename T, typename F, int U>
-__global__ void long_row_shuffle(int d2, int d1, int i, T* d, T* tmp, F s) {
+__global__ void long_row_shuffle(int d2, int d1, int i, T* d, T* tmp, F s, int* read_done) {
     row_major_index rm(d2, d1);
     s.set_i(i);
     int global_id = threadIdx.x + blockIdx.x * blockDim.x;
     int grid_size = gridDim.x * blockDim.x;
     int j = global_id;
+	if (global_id == 0) *read_done = 0;
     while(j + U * grid_size < d1) {
         #pragma unroll
         for(int k = 0; k < U; k++) {
@@ -139,7 +140,8 @@ __global__ void long_row_shuffle(int d2, int d1, int i, T* d, T* tmp, F s) {
         j += grid_size;
     }
 
-	cooperative_groups::this_grid().sync();
+	atomicAdd(read_done, 1);
+	while (*read_done < grid_size);
 
 	while(j + U * grid_size < d1) {
         #pragma unroll
@@ -177,11 +179,16 @@ __global__ void short_column_permute(int d2, int d1, T* d, F s) {
 
 template<typename T, typename F>
 void skinny_row_op(F s, int d2, int d1, T* d, T* tmp) {
+	int* read_done;
+	//CudaSafeCall( cudaMallocManaged(&read_done, sizeof(int)) );
+	//*read_done = 0;
+	CudaSafeCall( cudaMalloc(&read_done, sizeof(int)) );
     for(int i = 0; i < d2; i++) {
-        long_row_shuffle<T, F, 4><<<(d1-1)/(256*4)+1,256>>>(d2, d1, i, d, tmp, s);
+        long_row_shuffle<T, F, 4><<<(d1-1)/(256*4)+1,256>>>(d2, d1, i, d, tmp, s, read_done);
         //cudaMemcpy(d + d1 * i, tmp, sizeof(T) * d1, cudaMemcpyDeviceToDevice);
 
     }
+	CudaSafeCall( cudaFree(read_done) );
 }
 
 template<typename T, typename F>
