@@ -21,6 +21,7 @@ OBJSGEN = $(OBJ_DIR)/gen_ans.o \
 CC = g++
 NVCC = nvcc
 CFLAGS = -I$(INC_DIR) -std=c++11 -O3
+NVCCFLAGS = -arch=sm_61 -rdc=true
 
 all: mkdir test_213inplace
 
@@ -28,7 +29,7 @@ mkdir:
 	mkdir -p $(OBJ_DIR)
 
 test_213inplace: $(OBJSLIB)
-	$(NVCC) $(OBJSLIB) -o $@
+	$(NVCC) $(NVCCFLAGS) $(OBJSLIB) -o $@
 	
 gen_ans: $(OBJSGEN)
 	$(CC) $(CFLAGS) $(OBJSGEN) -o $@
@@ -36,8 +37,8 @@ gen_ans: $(OBJSGEN)
 -include $(OBJSLIB:.o=.d)
 
 $(OBJ_DIR)/%.o : src/%.cu
-	$(NVCC) -c $(CFLAGS) -o $(OBJ_DIR)/$*.o $<
-	$(NVCC) -M $(CFLAGS) $< >> $(OBJ_DIR)/$*.d
+	$(NVCC) -c $(CFLAGS) $(NVCCFLAGS) -o $(OBJ_DIR)/$*.o $<
+	$(NVCC) -M $(CFLAGS) $(NVCCFLAGS) $< >> $(OBJ_DIR)/$*.d
 
 $(OBJ_DIR)/%.o : src/%.cpp
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/$*.o $<

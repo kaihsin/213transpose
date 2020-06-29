@@ -15,6 +15,8 @@ void _213transpose(TensorUtil<T>& tu) {
 	CudaSafeCall( cudaMallocManaged(&d_data, dataSize) );
 	tu.init_data(d_data);
 	
+	//tu.write_file(d_data);
+	
 	cudaEvent_t start, stop;
 	CudaSafeCall( cudaEventCreate(&start) );
 	CudaSafeCall( cudaEventCreate(&stop) );

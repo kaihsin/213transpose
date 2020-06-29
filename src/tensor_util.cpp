@@ -54,7 +54,7 @@ template void TensorUtil<double>::init_data(double*);
 template<typename T>
 void TensorUtil<T>::print_mat(T* data) {
 	for (size_t i = 0; i < vol; i++) {
-		fprintf(fp, "%-10d", data[i]);
+		fprintf(fp, "%-10d", (int)data[i]);
 		for (int j = 1; j < rank; j++) {
 			if ((i + 1) % stride[j] == 0) fprintf(fp, "\n");
 		}
@@ -84,15 +84,15 @@ template void TensorUtil<double>::write_file(double*);
 template<typename T>
 void TensorUtil<T>::seq_tt(T* ans, T* data) {
 	for (size_t idx_s = 0; idx_s < vol; idx_s++) {
-		size_t idx_t = 0;
+		size_t idx_d = 0;
 		for (int i = 0; i < rank; i++) {
-			size_t stride_t = 1;
+			size_t stride_d = 1;
 			for (int j = 0; permutation[j] != i; j++) {
-				stride_t *= dim[permutation[j]];
+				stride_d *= dim[permutation[j]];
 			}
-			idx_t += ((idx_s / stride[i]) % dim[i]) * stride_t;
+			idx_d += ((idx_s / stride[i]) % dim[i]) * stride_d;
 		}
-		ans[idx_t] = data[idx_s];
+		ans[idx_d] = data[idx_s];
 	}
 }
 

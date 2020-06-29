@@ -121,37 +121,43 @@ struct fused_postop {
 }
 
 template<typename T, typename F, int U>
-__global__ void long_row_shuffle(int d2, int d1, int i, T* d, T* tmp, F s) {
-    row_major_index rm(d2, d1);
-    s.set_i(i);
-    int global_id = threadIdx.x + blockIdx.x * blockDim.x;
-    int grid_size = gridDim.x * blockDim.x;
-    int j = global_id;
-    while(j + U * grid_size < d1) {
-        #pragma unroll
-        for(int k = 0; k < U; k++) {
-            tmp[j] = d[rm(i, s(j))];
-            j += grid_size;
-        }
-    }
-    while(j < d1) {
-        tmp[j] = d[rm(i, s(j))];
-        j += grid_size;
-    }
+__global__ void long_row_shuffle(int d2, int d1, T* d, T* tmp, F s) {
+	namespace cg = cooperative_groups;
+	cg::grid_group g = cg::this_grid();
+	row_major_index rm(d2, d1);
+	int global_id = threadIdx.x + blockIdx.x * blockDim.x;
+	int grid_size = gridDim.x * blockDim.x;
+	for (int i = 0; i < d2; i++) {
+    	s.set_i(i);
+		int j = global_id;
+    	while(j + U * grid_size < d1) {
+        	#pragma unroll
+        	for(int k = 0; k < U; k++) {
+            	tmp[j] = d[rm(i, s(j))];
+            	j += grid_size;
+        	}
+    	}
+    	while(j < d1) {
+        	tmp[j] = d[rm(i, s(j))];
+        	j += grid_size;
+    	}
 
-	cooperative_groups::this_grid().sync();
+		g.sync();
 
-	while(j + U * grid_size < d1) {
-        #pragma unroll
-        for(int k = 0; k < U; k++) {
+		j = global_id;
+		while(j + U * grid_size < d1) {
+        	#pragma unroll
+        	for(int k = 0; k < U; k++) {
+				d[rm(i, j)] = tmp[j];
+            	j += grid_size;
+        	}
+    	}
+    	while(j < d1) {
 			d[rm(i, j)] = tmp[j];
-            j += grid_size;
-        }
-    }
-    while(j < d1) {
-		d[rm(i, j)] = tmp[j];
-        j += grid_size;
-    }
+        	j += grid_size;
+    	}
+		g.sync();
+	}
 }
 
 template<typename T, typename F>
@@ -177,11 +183,22 @@ __global__ void short_column_permute(int d2, int d1, T* d, F s) {
 
 template<typename T, typename F>
 void skinny_row_op(F s, int d2, int d1, T* d, T* tmp) {
-    for(int i = 0; i < d2; i++) {
-        long_row_shuffle<T, F, 4><<<(d1-1)/(256*4)+1,256>>>(d2, d1, i, d, tmp, s);
+	int n_threads = 256;
+	int numBlocksPerSm;
+	CudaSafeCall( cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &numBlocksPerSm, long_row_shuffle<T, F, 4>, n_threads, 0) );
+	int n_blocks = numBlocksPerSm * n_sms();
+	void *kernelArgs[] = {
+		(void *)&d2,  (void *)&d1, (void *)&d, (void *)&tmp, (void *)&s
+	};
+	CudaSafeCall( cudaLaunchCooperativeKernel((void *)long_row_shuffle<T, F, 4>,
+										  n_blocks, n_threads, kernelArgs) );
+	
+    /*for(int i = 0; i < d2; i++) {
+        //long_row_shuffle<T, F, 4><<<(d1-1)/(256*4)+1,256>>>(d2, d1, i, d, tmp, s);
         //cudaMemcpy(d + d1 * i, tmp, sizeof(T) * d1, cudaMemcpyDeviceToDevice);
 
-    }
+    }*/
 }
 
 template<typename T, typename F>
@@ -205,6 +222,8 @@ void skinny_transpose(T* data, int d1, int d2, int d3) {
 	printf("Doing Skinny C2R transpose\n");
 
     assert(d2 <= 32);
+
+
     int c, t, k;
     extended_gcd(d2, d1, c, t);
     if (c > 1) {
@@ -212,15 +231,20 @@ void skinny_transpose(T* data, int d1, int d2, int d3) {
     } else {
         k = t;
     }
+	
+	T* tmp;
+	CudaSafeCall( cudaMalloc(&tmp, sizeof(T) * d1) );
 
-    if (c > 1) {
-        skinny_col_op(fused_preop(d2, d1/c), d2, d1, data);
-    }
-    T* tmp;
-    cudaMalloc(&tmp, sizeof(T) * d1);
-    skinny_row_op(long_shuffle(d2, d1, c, k), d2, d1, data, tmp);
-    cudaFree(tmp);
-    skinny_col_op(fused_postop(d2, d1, c), d2, d1, data);
+    for (int i = 0; i < d3; i++) {
+		printf("i = %d\n", i);
+		if (c > 1) {
+        	skinny_col_op(fused_preop(d2, d1/c), d2, d1, data + i * d1 * d2);
+    	}
+    	skinny_row_op(long_shuffle(d2, d1, c, k), d2, d1, data + i * d1 * d2, tmp);
+    	skinny_col_op(fused_postop(d2, d1, c), d2, d1, data + i * d1 * d2);
+	}
+	
+	CudaSafeCall( cudaFree(tmp) );
 
 }
 
@@ -246,15 +270,19 @@ void skinny_transpose(T* data, int d1, int d2, int d3) {
     } else {
         q = t;
     }
+	
+	T* tmp;
+	CudaSafeCall( cudaMalloc(&tmp, sizeof(T) * d1) );
 
-    skinny_col_op(fused_preop(d2/c, c, d2, q), d2, d1, data);
-    T* tmp;
-    cudaMalloc(&tmp, sizeof(T) * d1);
-    skinny_row_op(shuffle(d2, d1, c, 0), d2, d1, data, tmp);
-    cudaFree(tmp);
-    if (c > 1) {
-        skinny_col_op(fused_postop(d2, d1/c), d2, d1, data);
-    }
+	for (int i = 0; i < d3; i++) {
+		skinny_col_op(fused_preop(d2/c, c, d2, q), d2, d1, data + i * d1 * d2);
+		skinny_row_op(shuffle(d2, d1, c, 0), d2, d1, data + i * d1 * d2, tmp);
+		if (c > 1) {
+			skinny_col_op(fused_postop(d2, d1/c), d2, d1, data + i * d1 * d2);
+		}
+	}
+	
+	CudaSafeCall( cudaFree(tmp) );
 }
 
 template void skinny_transpose(int*, int, int, int);
