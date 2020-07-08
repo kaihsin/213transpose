@@ -78,8 +78,8 @@ template void transpose(double*, int, int, int);
 
 template<typename T>
 void transpose(T* data, int d1, int d2, int d3) {
-    bool small_m = d2 < 32;
-    bool small_n = d1 < 32;
+    bool small_m = d2 <= 32;
+    bool small_n = d1 <= 32;
 
     //Heuristic to choose the fastest implementation
     //based on size of matrix and data layout
