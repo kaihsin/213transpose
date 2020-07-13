@@ -38,8 +38,6 @@ test_213inplace: $(OBJSLIB)
 	
 gen_ans: $(OBJSGEN)
 	$(CC) $(CFLAGS) $(OBJSGEN) -o $@
-	
--include $(OBJSLIB:.o=.d)
 
 $(OBJ_DIR)/%.o : src/%.cu
 	$(NVCC) -c $(CFLAGS) $(NVCCFLAGS) -o $(OBJ_DIR)/$*.o $<
@@ -49,6 +47,8 @@ $(OBJ_DIR)/%.o : src/%.cpp
 	$(CC) -c $(CFLAGS) -o $(OBJ_DIR)/$*.o $<
 	$(CC) -M $(CFLAGS) $< >> $(OBJ_DIR)/$*.d
 
+-include $(OBJSLIB:.o=.d)
+    
 clean_dep:
 	rm -f $(OBJ_DIR)/*.d
 clean:

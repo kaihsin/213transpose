@@ -84,7 +84,7 @@ void transpose(T* data, int d1, int d2, int d3) {
     //Heuristic to choose the fastest implementation
     //based on size of matrix and data layout
 	if (small_m || small_n) {
-		if (small_m) {
+		if (d2 < d1) {
 			inplace::detail::c2r::skinny_transpose(data, d1, d2, d3);
 		}
 		else {

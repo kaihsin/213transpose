@@ -5,9 +5,9 @@
 #include "equations.h"
 #include "smem.h"
 #include "skinny.h"
+#include "util.h"
 #include <cassert>
 
-#include <iostream>
 #include <cstdio>
 #include <cooperative_groups.h>
 
@@ -29,76 +29,101 @@ __global__ void long_row_shuffle(int d3, int d2, int d1, T* d, T* tmp, F s) {
         for (int i = 0; i < d2; i++) {
             s.set_i(i);
             int j = global_id;
-            /*while(j + U * grid_size < d1) {
+            g.sync();
+            while(j + U * grid_size < d1) {
                 #pragma unroll
                 for(int k = 0; k < U; k++) {
                     tmp[j] = d[offset + rm(i, s(j))];
                     j += grid_size;
                 }
-            }*/
+            }
             while(j < d1) {
                 tmp[j] = d[offset + rm(i, s(j))];
                 j += grid_size;
             }
 
-            g.sync();
-
             j = global_id;
-            /*while(j + U * grid_size < d1) {
+            g.sync();
+            while(j + U * grid_size < d1) {
                 #pragma unroll
                 for(int k = 0; k < U; k++) {
                     d[offset + rm(i, j)] = tmp[j];
                     j += grid_size;
                 }
-            }*/
+            }
             while(j < d1) {
                 d[offset + rm(i, j)] = tmp[j];
                 j += grid_size;
             }
-            g.sync();
         }
     }
 }
 
 template<typename T, typename F>
-__global__ void smem_row_shuffle(int d2, int d1, T* d, F s) {
+__global__ void smem_row_shuffle(int d3, int d2, int d1, T* d, F s) {
     T* smem = shared_memory<T>();
     row_major_index rm(d2, d1);
-    size_t offset = blockIdx.x * (size_t)d1 * (size_t)d2;
-    for (int i = 0; i < d2; i++) {
-        s.set_i(i);
-        __syncthreads();
-        for (int j = threadIdx.x; j < d1; j += blockDim.x) {
-            smem[j] = d[offset + rm(i, j)];
+    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
+    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t offset = l * d1d2;
+    for (size_t k = l; k < r; k++) {
+        for (int i = 0; i < d2; i++) {
+            s.set_i(i);
+            int j = threadIdx.x;
+            __syncthreads();
+            for (; j < d1; j += blockDim.x) {
+                smem[j] = d[offset + rm(i, j)];
+            }
+            j = threadIdx.x;
+            __syncthreads();
+            for (; j < d1; j += blockDim.x) {
+                d[offset + rm(i, j)] = smem[s(j)];
+            }
         }
-        __syncthreads();
-        for (int j = threadIdx.x; j < d1; j += blockDim.x) {
-            d[offset + rm(i, j)] = smem[s(j)];
-        }
+        offset += d1d2;
     }
 }
 
-/*template<typename T, typename F>
-__global__ void short_column_permute(int d2, int d1, T* d, F s) {
+template<typename T, typename F>
+__global__ void short_row_shuffle(int d3, int d2, int d1, T* d, F s) {
     T* smem = shared_memory<T>();
     row_major_index rm(d2, d1);
-    row_major_index blk(blockDim.y, blockDim.x);
-    int i = threadIdx.y; // One block tall by REQUIREMENT
-    int grid_size = blockDim.x * gridDim.x;
-    //size_t offset = blockIdx.y * (size_t)d1 * (size_t)d2;
-    
-    if (i < d2) {
-        for(int j = threadIdx.x + blockIdx.x * blockDim.x;
-            j < d1; j+= grid_size) {
-            
-            smem[blk(i, threadIdx.x)] = d[rm(i, j)];
-            __syncthreads();
-            d[rm(i, j)] = smem[blk(s(i, j), threadIdx.x)];
-            __syncthreads();
-
+    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
+    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t offset = l * d1d2;
+    for (size_t k = l; k < r; k++) {
+        size_t idx = threadIdx.x;
+        __syncwarp();
+        for (; idx < d1d2; idx += blockDim.x) {
+            smem[idx] = d[offset + idx];
         }
+        idx = threadIdx.x;
+        __syncwarp();
+        for (; idx < d1d2; idx += blockDim.x) {
+            int i = idx / d1;
+            int j = idx % d1;
+            s.set_i(i);
+            d[offset + idx] = smem[rm(i, s(j))];
+        }
+        offset += d1d2;
     }
-}*/
+    /*for (size_t k = blockIdx.x; k < d3; k += gridDim.x) {
+        size_t offset = k * (size_t)d1 * (size_t)d2;
+        __syncwarp();
+        for (size_t idx = threadIdx.x; idx < d1 * d2; idx += blockDim.x) {
+            smem[idx] = d[offset + idx];
+        }
+        __syncwarp();
+        for (size_t idx = threadIdx.x; idx < d1 * d2; idx += blockDim.x) {
+            int i = idx / d1;
+            int j = idx % d1;
+            s.set_i(i);
+            d[offset + idx] = smem[rm(i, s(j))];
+        }
+    }*/
+}
 
 template<typename T, typename F>
 __global__ void short_column_permute(int d2, int d1, T* d, F s) {
@@ -109,42 +134,155 @@ __global__ void short_column_permute(int d2, int d1, T* d, F s) {
     int grid_size_x = blockDim.x * gridDim.y;
     size_t offset = blockIdx.x * (size_t)d1 * (size_t)d2;
     
-    for(int j = threadIdx.x + blockIdx.y * blockDim.x; j < d1; j += grid_size_x) {
+    for (int j = threadIdx.x + blockIdx.y * blockDim.x; j < d1;
+        j += grid_size_x) {
+        __syncthreads();
         smem[blk(i, threadIdx.x)] = d[offset + rm(i, j)];
         __syncthreads();
         d[offset + rm(i, j)] = smem[blk(s(i, j), threadIdx.x)];
-        __syncthreads();
     }
 }
 
 template<typename T, typename F>
-void global_mem_row_op(F s, int d3, int d2, int d1, T* d) {
-    T* tmp;
-    CudaSafeCall( cudaMalloc(&tmp, sizeof(T) * d1) );
-    int n_threads = 1024;
+__global__ void small_d1d2_permute(int d3, int d2, int d1, T* d, F s) {
+    T* smem = shared_memory<T>();
+    row_major_index rm(d2, d1);
+    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
+    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t offset = l * d1d2;
+    for (size_t k = l; k < r; k++) {
+        size_t idx = threadIdx.x;
+        __syncwarp();
+        for (; idx < d1 * d2; idx += blockDim.x) {
+            smem[idx] = d[offset + idx];
+        }
+        
+        idx = threadIdx.x;
+        __syncwarp();
+        for (; idx < d1 * d2; idx += blockDim.x) {
+            int i = idx / d1;
+            int j = idx % d1;
+            d[offset + idx] = smem[rm(s(i, j), j)];
+        }
+        offset += d1d2;
+    }
+}
+
+template<typename T, typename F>
+__global__ void compress_row_shuffle_v2(int d3, int d2, int d1, T* d, F s) {
+    T* smem = shared_memory<T>();
+    row_major_index rm(d2, d1);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t u = 32 / d1d2;
+    for (size_t lv = u * blockIdx.x; lv < d3; lv += u * gridDim.x) {
+        size_t offset = lv * d1d2;
+        size_t idx = threadIdx.x;
+        __syncwarp();
+        if (idx < u * d1d2) {
+            smem[idx] = d[offset + idx];
+        }
+        
+        __syncwarp();
+        if (idx < u * d1d2) {
+            int k = idx / d1d2;
+            int i = (idx % d1d2) / d1;
+            int j = (idx % d1d2) % d1;
+            s.set_i(i);
+            d[offset + idx] = smem[k * d1d2 + rm(i, s(j))];
+        }
+    }
+}
+
+template<typename T, typename F>
+__global__ void compress_row_shuffle(int d3, int d2, int d1, T* d, F s) {
+    T* smem = shared_memory<T>();
+    row_major_index rm(d2, d1);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t u = 32 / d1d2;
+    for (size_t lv = u * blockIdx.x; lv < d3; lv += u * gridDim.x) {
+        size_t offset = lv * d1d2;
+        size_t idx = threadIdx.x;
+        __syncwarp();
+        if (idx < u * d1d2) {
+            smem[idx] = d[offset + idx];
+        }
+        
+        __syncwarp();
+        if (idx < u * d1d2) {
+            int k = idx / d1d2;
+            int i = (idx % d1d2) / d1;
+            int j = (idx % d1d2) % d1;
+            s.set_i(i);
+            d[offset + idx] = smem[k * d1d2 + rm(i, s(j))];
+        }
+    }
+}
+
+template<typename T, typename F>
+__global__ void compress_column_permute(int d3, int d2, int d1, T* d, F s) {
+    T* smem = shared_memory<T>();
+    row_major_index rm(d2, d1);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t u = 32 / d1d2;
+    for (size_t lv = u * blockIdx.x; lv < d3; lv += u * gridDim.x) {
+        size_t offset = lv * d1d2;
+        size_t idx = threadIdx.x;
+        if (idx < u * d1d2) {
+            smem[idx] = d[offset + idx];
+        }
+        
+        __syncwarp();
+        if (idx < u * d1d2) {
+            int k = idx / d1d2;
+            int i = (idx % d1d2) / d1;
+            int j = (idx % d1d2) % d1;
+            d[offset + idx] = smem[k * d1d2 + rm(s(i, j), j)];
+        }
+    }
+}
+
+template<typename F>
+int get_num_block(F func, int n_threads, size_t smem_size) {
     int numBlocksPerSm;
     CudaSafeCall( cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &numBlocksPerSm, long_row_shuffle<T, F, 4>, n_threads, 0) );
-    int n_blocks = numBlocksPerSm * n_sms();
-    void *kernelArgs[] = {
-        (void *)&d3, (void *)&d2, (void *)&d1, (void *)&d, (void *)&tmp, (void *)&s
-    };
-    CudaSafeCall( cudaLaunchCooperativeKernel((void *)long_row_shuffle<T, F, 4>,
-                                          n_blocks, n_threads, kernelArgs) );
-    CudaSafeCall( cudaFree(tmp) );
+      &numBlocksPerSm, func, n_threads, smem_size) );
+    return numBlocksPerSm * n_sms();
 }
 
 template<typename T, typename F>
 void skinny_row_op(F s, int d3, int d2, int d1, T* d) {
-    size_t smem_size = sizeof(T) * d1;
-    cudaDeviceProp prop;
-    CudaSafeCall( cudaGetDeviceProperties(&prop, 0) );
-    if (prop.sharedMemPerBlock >= smem_size) {
+    if (d1 * d2 <= 32) {
+        size_t smem_size = sizeof(T) * 32;
         int n_threads = 32;
-        smem_row_shuffle<<<d3, n_threads, smem_size>>>(d2, d1, d, s);
+        int n_blocks = get_num_block(compress_row_shuffle<T, F>, n_threads, smem_size);
+        compress_row_shuffle<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
+    }
+    else if (shared_mem_per_block() / 8 >= sizeof(T) * d1 * d2) {
+        printf("short_row_shuffle\n");
+        size_t smem_size = sizeof(T) * d1 * d2;
+        int n_threads = 32;
+        int n_blocks = get_num_block(short_row_shuffle<T, F>, n_threads, smem_size);
+        short_row_shuffle<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
+    }
+    else if (shared_mem_per_block() >= sizeof(T) * d1) {
+        size_t smem_size = sizeof(T) * d1;
+        printf("smem_row_shuffle\n");
+        int n_threads = 1024;
+        int n_blocks = get_num_block(smem_row_shuffle<T, F>, n_threads, smem_size);
+        smem_row_shuffle<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
     }
     else {
-        global_mem_row_op(s, d3, d2, d1, d);
+        T* tmp;
+        CudaSafeCall( cudaMalloc(&tmp, sizeof(T) * d1) );
+        int n_threads = 1024;
+        int n_blocks = get_num_block(long_row_shuffle<T, F, 4>, n_threads, 0);
+        void *kernelArgs[] = {
+            (void *)&d3, (void *)&d2, (void *)&d1, (void *)&d, (void *)&tmp, (void *)&s
+        };
+        CudaSafeCall( cudaLaunchCooperativeKernel((void *)long_row_shuffle<T, F, 4>,
+                                              n_blocks, n_threads, kernelArgs) );
+        CudaSafeCall( cudaFree(tmp) );
     }
     
     /*for(int i = 0; i < d2; i++) {
@@ -157,32 +295,29 @@ void skinny_row_op(F s, int d3, int d2, int d1, T* d) {
 
 template<typename T, typename F>
 void skinny_col_op(F s, int d3, int d2, int d1, T* d) {
-    int n_threads = 32;
-    // XXX Potential optimization here: figure out how many blocks/sm
-    // we should launch
-    size_t smem_size = sizeof(T) * d2 * n_threads;
-    int numBlocksPerSm;
-    CudaSafeCall( cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &numBlocksPerSm, short_column_permute<T, F>, n_threads, smem_size) );
-    int n_blocks = numBlocksPerSm * n_sms();
-    /*dim3 grid_dim(n_blocks);
-    dim3 block_dim(n_threads, d2);
-    //Naive For loop  32 32 695800 6733.55225ms; For loop in kernel 2901.36499ms
+    if (d1 * d2 <= 32) {
+        size_t smem_size = sizeof(T) * 32;
+        int n_threads = 32;
+        int n_blocks = get_num_block(compress_column_permute<T, F>, n_threads, smem_size);
+        compress_column_permute<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
+    }
+    else if (shared_mem_per_block() >= sizeof(T) * d1 * d2) {
+        int n_threads = 32;
+        size_t smem_size = sizeof(T) * d2 * d1;
+        int n_blocks = get_num_block(short_column_permute<T, F>, n_threads, smem_size);
+        small_d1d2_permute<<<n_blocks, n_threads,
+            smem_size>>>(d3, d2, d1, d, s);
+    }
+    else {
+        int n_threads = 32;
+        size_t smem_size = sizeof(T) * d2 * n_threads;
+        int n_blocks = get_num_block(short_column_permute<T, F>, n_threads * d2, smem_size);
 
-    for (int i = 0; i < d3; i++) {
+        dim3 grid_dim(d3, (n_blocks + d3 - 1) / d3);
+        dim3 block_dim(n_threads, d2);
         short_column_permute<<<grid_dim, block_dim,
-            smem_size>>>(d2, d1, d + i * d1 * d2, s);
-    }*/
-    
-    /*dim3 grid_dim(n_blocks);
-    dim3 block_dim(n_threads, d2);
-    short_column_permute<<<grid_dim, block_dim,
-        smem_size>>>(d3, d2, d1, d, s);*/
-    
-    dim3 grid_dim(d3, max(1, n_blocks / d3));
-    dim3 block_dim(n_threads, d2);
-    short_column_permute<<<grid_dim, block_dim,
-        smem_size>>>(d2, d1, d, s);
+            smem_size>>>(d2, d1, d, s);
+    }
 }
 
 namespace c2r {

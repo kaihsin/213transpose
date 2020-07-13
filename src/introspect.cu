@@ -1,5 +1,5 @@
 #include "introspect.h"
-#include <iostream>
+
 namespace inplace {
 
 namespace {
@@ -29,6 +29,10 @@ int n_ctas() {
 
 size_t gpu_memory_size() {
     return cached_properties.properties.totalGlobalMem;
+}
+
+size_t shared_mem_per_block() {
+    return cached_properties.properties.sharedMemPerBlock;
 }
 
 int current_sm() {

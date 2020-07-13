@@ -19,3 +19,13 @@ __host__ __device__ __forceinline__
 unsigned int div_down(unsigned int a, unsigned int b) {
     return a / b;
 }
+
+__device__
+inline size_t chunk_left(size_t id, size_t p, size_t n) {
+	return (id * n) / p;
+}
+
+__device__
+inline size_t chunk_right(size_t id, size_t p, size_t n) {
+	return ((id + 1) * n) / p;
+}
