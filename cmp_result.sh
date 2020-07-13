@@ -44,9 +44,9 @@ if [ ! -d "./testcase" ]; then
 fi
 
 for ((i=0;i<${#PARAMS[@]};++i)) ; do
-        if [ $i -le 23 ]; then
-            continue
-        fi
+        #if [ $i -le 23 ]; then
+        #    continue
+        #fi
         
         echo "Case $i"
         echo "./test_213inplace ${PARAMS[$i]} > ./testcase/res_case$i.out"
