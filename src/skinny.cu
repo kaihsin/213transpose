@@ -31,13 +31,13 @@ __global__ void long_row_shuffle(int d3, int d2, int d1, T* d, T* tmp, F s) {
             s.set_i(i);
             int j = global_id;
             g.sync();
-            while(j + U * grid_size < d1) {
+            /*while(j + U * grid_size < d1) {
                 #pragma unroll
                 for(int u = 0; u < U; u++) {
                     tmp[j] = d[offset + rm(i, s(j))];
                     j += grid_size;
                 }
-            }
+            }*/
             while(j < d1) {
                 tmp[j] = d[offset + rm(i, s(j))];
                 j += grid_size;
@@ -45,13 +45,13 @@ __global__ void long_row_shuffle(int d3, int d2, int d1, T* d, T* tmp, F s) {
 
             j = global_id;
             g.sync();
-            while(j + U * grid_size < d1) {
+            /*while(j + U * grid_size < d1) {
                 #pragma unroll
                 for(int u = 0; u < U; u++) {
                     d[offset + rm(i, j)] = tmp[j];
                     j += grid_size;
                 }
-            }
+            }*/
             while(j < d1) {
                 d[offset + rm(i, j)] = tmp[j];
                 j += grid_size;
@@ -103,8 +103,8 @@ __global__ void short_row_shuffle(int d3, int d2, int d1, T* d, F s) {
         idx = threadIdx.x;
         __syncwarp();
         for (; idx < d1d2; idx += blockDim.x) {
-            int i = idx / d1;
-            int j = idx % d1;
+            size_t i = idx / d1;
+            size_t j = idx % d1;
             s.set_i(i);
             d[offset + idx] = smem[rm(i, s(j))];
         }
@@ -124,6 +124,34 @@ __global__ void short_row_shuffle(int d3, int d2, int d1, T* d, F s) {
             d[offset + idx] = smem[rm(i, s(j))];
         }
     }*/
+}
+
+template<typename T, typename F>
+__global__ void compress_row_shuffle(int d3, int d2, int d1, T* d, F s) {
+    T* smem = shared_memory<T>();
+    row_major_index rm(d2, d1);
+    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
+    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t batch_size = 32 / d1d2;
+    for (size_t lv = l; lv < r; lv += batch_size) {
+        batch_size = min(batch_size, r - lv);
+        size_t offset = lv * d1d2;
+        size_t idx = threadIdx.x;
+        __syncwarp();
+        if (idx < batch_size * d1d2) {
+            smem[idx] = d[offset + idx];
+        }
+        
+        size_t k = idx / d1d2;
+        size_t i = (idx % d1d2) / d1;
+        size_t j = (idx % d1d2) % d1;
+        s.set_i(i);
+        __syncwarp();
+        if (idx < batch_size * d1d2) {
+            d[offset + idx] = smem[k * d1d2 + rm(i, s(j))];
+        }
+    }
 }
 
 template<typename T, typename F>
@@ -154,47 +182,19 @@ __global__ void small_d1d2_permute(int d3, int d2, int d1, T* d, F s) {
     size_t offset = l * d1d2;
     for (size_t k = l; k < r; k++) {
         size_t idx = threadIdx.x;
-        __syncwarp();
+        __syncthreads();
         for (; idx < d1 * d2; idx += blockDim.x) {
             smem[idx] = d[offset + idx];
         }
         
         idx = threadIdx.x;
-        __syncwarp();
+        __syncthreads();
         for (; idx < d1 * d2; idx += blockDim.x) {
-            int i = idx / d1;
-            int j = idx % d1;
+            size_t i = idx / d1;
+            size_t j = idx % d1;
             d[offset + idx] = smem[rm(s(i, j), j)];
         }
         offset += d1d2;
-    }
-}
-
-template<typename T, typename F>
-__global__ void compress_row_shuffle(int d3, int d2, int d1, T* d, F s) {
-    T* smem = shared_memory<T>();
-    row_major_index rm(d2, d1);
-    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
-    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
-    size_t d1d2 = (size_t)d1 * (size_t)d2;
-    size_t batch_size = 32 / d1d2;
-    for (size_t lv = l; lv < r; lv += batch_size) {
-        batch_size = min(batch_size, r - lv);
-        size_t offset = lv * d1d2;
-        size_t idx = threadIdx.x;
-        __syncwarp();
-        if (idx < batch_size * d1d2) {
-            smem[idx] = d[offset + idx];
-        }
-        
-        __syncwarp();
-        if (idx < batch_size * d1d2) {
-            int k = idx / d1d2;
-            int i = (idx % d1d2) / d1;
-            int j = (idx % d1d2) % d1;
-            s.set_i(i);
-            d[offset + idx] = smem[k * d1d2 + rm(i, s(j))];
-        }
     }
 }
 
@@ -215,11 +215,11 @@ __global__ void compress_column_permute(int d3, int d2, int d1, T* d, F s) {
             smem[idx] = d[offset + idx];
         }
         
+        size_t k = idx / d1d2;
+        size_t i = (idx % d1d2) / d1;
+        size_t j = (idx % d1d2) % d1;
         __syncwarp();
         if (idx < batch_size * d1d2) {
-            int k = idx / d1d2;
-            int i = (idx % d1d2) / d1;
-            int j = (idx % d1d2) % d1;
             d[offset + idx] = smem[k * d1d2 + rm(s(i, j), j)];
         }
     }
@@ -235,24 +235,27 @@ int get_num_block(F func, int n_threads, size_t smem_size) {
 
 template<typename T, typename F>
 void skinny_row_op(F s, int d3, int d2, int d1, T* d) {
-    if (d1 * d2 <= 16) {
+    if (d1 * d2 <= 32) {
         size_t smem_size = sizeof(T) * 32;
         int n_threads = 32;
         int n_blocks = get_num_block(compress_row_shuffle<T, F>, n_threads, smem_size);
+        n_blocks = min(n_blocks, d3);
         compress_row_shuffle<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
     }
     else if (shared_mem_per_block() / 8 >= sizeof(T) * d1 * d2) {
-        printf("short_row_shuffle\n");
+        //printf("short_row_shuffle\n");
         size_t smem_size = sizeof(T) * d1 * d2;
         int n_threads = 32;
         int n_blocks = get_num_block(short_row_shuffle<T, F>, n_threads, smem_size);
+        n_blocks = min(n_blocks, d3);
         short_row_shuffle<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
     }
     else if (shared_mem_per_block() >= sizeof(T) * d1) {
         size_t smem_size = sizeof(T) * d1;
-        printf("smem_row_shuffle\n");
-        int n_threads = 1024;
+        //printf("smem_row_shuffle\n");
+        int n_threads = 256;
         int n_blocks = get_num_block(smem_row_shuffle<T, F>, n_threads, smem_size);
+        n_blocks = min(n_blocks, d3);
         smem_row_shuffle<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
     }
     else {
@@ -276,18 +279,28 @@ void skinny_row_op(F s, int d3, int d2, int d1, T* d) {
     }*/
 }
 
+int get_num_thread(int d1) {
+    int n_threads = 1;
+    while (n_threads < d1 && n_threads < 1024) {
+        n_threads <<= 1;
+    }
+    return n_threads;
+}
+
 template<typename T, typename F>
 void skinny_col_op(F s, int d3, int d2, int d1, T* d) {
     if (d1 * d2 <= 32) {
         size_t smem_size = sizeof(T) * 32;
         int n_threads = 32;
         int n_blocks = get_num_block(compress_column_permute<T, F>, n_threads, smem_size);
+        n_blocks = min(n_blocks, d3);
         compress_column_permute<<<n_blocks, n_threads, smem_size>>>(d3, d2, d1, d, s);
     }
     else if (shared_mem_per_block() >= sizeof(T) * d1 * d2) {
-        int n_threads = 32;
+        int n_threads = get_num_thread(d1);
         size_t smem_size = sizeof(T) * d2 * d1;
-        int n_blocks = get_num_block(short_column_permute<T, F>, n_threads, smem_size);
+        int n_blocks = get_num_block(small_d1d2_permute<T, F>, n_threads, smem_size);
+        n_blocks = min(n_blocks, d3);
         small_d1d2_permute<<<n_blocks, n_threads,
             smem_size>>>(d3, d2, d1, d, s);
     }
@@ -308,7 +321,7 @@ namespace c2r {
 template<typename T>
 void skinny_transpose(T* data, int d1, int d2, int d3) {
     //std::cout << "Doing Skinny C2R transpose of " << d2 << ", " << d1 << std::endl;
-    printf("Doing Skinny C2R transpose\n");
+    //printf("Doing Skinny C2R transpose\n");
 
     assert(d2 <= 32);
 

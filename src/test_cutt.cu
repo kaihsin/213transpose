@@ -23,7 +23,11 @@ float cutt_plan(T* idata, T* odata, int* dim, int* permutation, size_t dataSize)
 	CudaSafeCall( cudaEventRecord(start, 0) );
 	
 	cuttHandle plan;
-	cuttCheck(cuttPlan(&plan, 3, dim, permutation, sizeof(int), 0));
+	cuttCheck(cuttPlan(&plan, 3, dim, permutation, sizeof(T), 0));
+    
+    int dev;
+    CudaSafeCall( cudaGetDevice(&dev) );
+    CudaSafeCall( cudaMemPrefetchAsync(idata, dataSize, dev, 0) );
 	cuttCheck(cuttExecute(plan, idata, odata));
 	
 	CudaSafeCall( cudaDeviceSynchronize() );
@@ -44,7 +48,10 @@ float cutt_plan_measure(T* idata, T* odata, int* dim, int* permutation, size_t d
 	CudaSafeCall( cudaEventRecord(start, 0) );
 	
 	cuttHandle plan;
-	cuttPlanMeasure(&plan, 3, dim, permutation, sizeof(int), 0, idata, odata);
+	cuttPlanMeasure(&plan, 3, dim, permutation, sizeof(T), 0, idata, odata);
+    int dev;
+    CudaSafeCall( cudaGetDevice(&dev) );
+    CudaSafeCall( cudaMemPrefetchAsync(idata, dataSize, dev, 0) );
 	cuttCheck(cuttExecute(plan, idata, odata));
 	
 	CudaSafeCall( cudaDeviceSynchronize() );
@@ -84,7 +91,8 @@ void test_cutt(TensorUtil<T>& tu) {
 	
 	float t2 = cutt_plan_measure(i_data, o_data, dim, permutation, dataSize);
 
-	printf("t1 = %.5f\nt2 = %.5f\nTime: %.5fms\n", t1, t2, std::min(t1, t2));
+	//printf("t1 = %.5f\nt2 = %.5f\nTime: %.5fms\n", t1, t2, std::min(t1, t2));
+    printf("%.5f\n", std::min(t1, t2));
 	
 	CudaSafeCall( cudaFree(i_data) );
 	CudaSafeCall( cudaFree(o_data) );
@@ -98,7 +106,7 @@ int main(int argc, char** argv) {
 	dim[2] = atoi(argv[3]);
 	int permutation[3] = {1, 0, 2};
 	size_t dataSize = (long long)dim[0] * dim[1] * dim[2] * sizeof(int);
-	printf("Data Size = %lld bytes\n", (long long)dataSize);
+	//printf("Data Size = %lld bytes\n", (long long)dataSize);
 	
 	int type_size = atoi(argv[4]);
 	FILE* fp = (argc == 6)? fopen(argv[5], "wb") : stdout;

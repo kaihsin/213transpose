@@ -23,6 +23,10 @@ void _213transpose(TensorUtil<T>& tu) {
 	CudaSafeCall( cudaEventRecord(start, 0) );
 	
 	//CudaSafeCall( cudaMemcpy(d_data, h_data, dataSize, cudaMemcpyHostToDevice) );
+    
+    int dev;
+    CudaSafeCall( cudaGetDevice(&dev) );
+    CudaSafeCall( cudaMemPrefetchAsync(d_data, dataSize, dev, 0) );
 	
 	int d1 = tu.dim[0];
 	int d2 = tu.dim[1];
@@ -31,6 +35,7 @@ void _213transpose(TensorUtil<T>& tu) {
 		inplace::transpose(true, d_data + k * d1 * d2, d2, d1);
 	}*/
 	inplace::transpose(d_data, d1, d2, d3);
+    
 	//CudaSafeCall( cudaMemcpy(h_data, d_data, dataSize, cudaMemcpyDeviceToHost) );
 	CudaSafeCall( cudaDeviceSynchronize() );
 	CudaSafeCall( cudaEventRecord(stop, 0) );
@@ -38,6 +43,7 @@ void _213transpose(TensorUtil<T>& tu) {
 	float t;
 	CudaSafeCall( cudaEventElapsedTime(&t, start, stop) );
 	printf("Time: %.5fms\n", t);
+    //printf("%.5f\n", t);
 	
 	tu.write_file(d_data);
 	

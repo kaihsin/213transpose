@@ -30,8 +30,8 @@ mkdir:
 
 test_cutt: test_cutt.o $(OBJ_DIR)/tensor_util.o $(OBJ_DIR)/cudacheck.o ../cutt/lib/libcutt.a
 	nvcc $(NVCCFLAGS) -std=c++11 -O3 -L../cutt/lib -lcutt -o test_cutt test_cutt.o $(OBJ_DIR)/tensor_util.o $(OBJ_DIR)/cudacheck.o
-test_cutt.o: test_cutt.cu ../cutt/include/cutt.h ./include/tensor_util.h ./include/cudacheck.h
-	nvcc $(NVCCFLAGS) -std=c++11 -O3 -I../cutt/include -I./include -c test_cutt.cu	
+test_cutt.o: src/test_cutt.cu ../cutt/include/cutt.h ./include/tensor_util.h ./include/cudacheck.h
+	nvcc $(NVCCFLAGS) -std=c++11 -O3 -I../cutt/include -I./include -c src/test_cutt.cu	
 
 test_213inplace: $(OBJSLIB)
 	$(NVCC) $(NVCCFLAGS) $(OBJSLIB) -o $@
