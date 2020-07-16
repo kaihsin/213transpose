@@ -7,6 +7,7 @@
 #include "skinny.h"
 #include "util.h"
 #include <cassert>
+#include <cmath>
 
 #include <cstdio>
 #include <cooperative_groups.h>
@@ -280,11 +281,15 @@ void skinny_row_op(F s, int d3, int d2, int d1, T* d) {
 }
 
 int get_num_thread(int d1) {
-    int n_threads = 1;
+    /*int n_threads = 1;
     while (n_threads < d1 && n_threads < 1024) {
         n_threads <<= 1;
     }
-    return n_threads;
+    return n_threads;*/
+    int msb = static_cast<int>(log2(d1)); // most significant bit
+    unsigned n_threads = static_cast<unsigned>(pow(2, msb + 1));
+    unsigned lim = 1024;
+    return static_cast<int>(min(n_threads, lim));
 }
 
 template<typename T, typename F>

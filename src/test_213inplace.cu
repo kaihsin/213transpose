@@ -43,7 +43,8 @@ void _213transpose(TensorUtil<T>& tu) {
 	float t;
 	CudaSafeCall( cudaEventElapsedTime(&t, start, stop) );
 	printf("Time: %.5fms\n", t);
-    //printf("%.5f\n", t);
+    FILE* txtfp = fopen("time.txt", "w+");
+    fprintf(txtfp, "%.5f\n", t);
 	
 	tu.write_file(d_data);
 	

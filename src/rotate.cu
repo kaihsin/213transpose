@@ -49,7 +49,7 @@ __global__ void coarse_col_rotate(F fn, reduced_divisor m, int n, T* d) {
         
         for(int b = 0; b < c; b++) {
             int x = threadIdx.y;
-            int pos = m.mod(b + x * inc);            
+            int pos = m.mod(b + x * inc);   // (b + x * inc) % m
             smem[smem_write_idx] = d[rm(pos, col)];
             __syncthreads();
             T prior = smem[smem_read_idx];

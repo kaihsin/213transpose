@@ -7,7 +7,7 @@
 #include "shuffle.h"
 #include <algorithm>
 #include <cstdio>
-
+#include "cudacheck.h"
 
 namespace inplace {
 
@@ -15,25 +15,29 @@ namespace c2r {
 
 template<typename T>
 void transpose(T* data, int d1, int d2, int d3) {
-    /*
-    //std::cout << "Doing C2R transpose of " << m << ", " << n << std::endl;
+    //std::cout << "Doing C2R transpose of " << d2 << ", " << d1 << std::endl;
 
     int c, t, k;
-    extended_gcd(m, n, c, t);
+    extended_gcd(d2, d1, c, t);
     if (c > 1) {
-        extended_gcd(m/c, n/c, t, k);
+        extended_gcd(d2/c, d1/c, t, k);
     } else {
         k = t;
     }
-    if (c > 1) {
-        detail::rotate(detail::c2r::prerotator(n/c), m, n, data);
+
+    int* tmp_int;
+	CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
+	size_t d1d2 = (size_t)d1 * (size_t)d2;
+	for (size_t i = 0; i < d3; i++) {
+        size_t offset = i * d1d2;
+        if (c > 1) {
+            detail::rotate(detail::c2r::prerotator(d1/c), d2, d1, data + offset);
+        }
+        detail::shuffle_fn(data + offset, d2, d1, detail::c2r::shuffle(d2, d1, c, k));
+        detail::rotate(detail::c2r::postrotator(d2), d2, d1, data + offset);
+        detail::scatter_permute(detail::c2r::scatter_postpermuter(d2, d1, c), d2, d1, data + offset, tmp_int);
     }
-    detail::shuffle_fn(data, m, n, detail::c2r::shuffle(m, n, c, k));
-    detail::rotate(detail::c2r::postrotator(m), m, n, data);
-    int* temp_int;
-    cudaMalloc(&temp_int, sizeof(int) * m);
-    detail::scatter_permute(detail::c2r::scatter_postpermuter(m, n, c), m, n, data, temp_int);
-    cudaFree(temp_int);*/
+    CudaSafeCall( cudaFree(tmp_int) );
 }
 
 template void transpose(int*, int, int, int);
@@ -47,25 +51,30 @@ namespace r2c {
 
 template<typename T>
 void transpose(T* data, int d1, int d2, int d3) {
-    /*
-    //std::cout << "Doing R2C transpose of " << m << ", " << n << std::endl;
+    
+    //std::cout << "Doing R2C transpose of " << d2 << ", " << d1 << std::endl;
 
     int c, t, k;
-    extended_gcd(m, n, c, t);
+    extended_gcd(d2, d1, c, t);
     if (c > 1) {
-        extended_gcd(m/c, n/c, t, k);
+        extended_gcd(d2/c, d1/c, t, k);
     } else {
         k = t;
     }
-    int* temp_int;
-    cudaMalloc(&temp_int, sizeof(int) * m);
-    detail::scatter_permute(detail::r2c::scatter_prepermuter(m, n, c), m, n, data, temp_int);
-    cudaFree(temp_int);
-    detail::rotate(detail::r2c::prerotator(m), m, n, data);
-    detail::shuffle_fn(data, m, n, detail::r2c::shuffle(m, n, c, k));
-    if (c > 1) {
-        detail::rotate(detail::r2c::postrotator(n/c, m), m, n, data);
-    }*/
+
+    int* tmp_int;
+    CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
+	size_t d1d2 = (size_t)d1 * (size_t)d2;
+	for (size_t i = 0; i < d3; i++) {
+	    size_t offset = i * d1d2;
+        detail::scatter_permute(detail::r2c::scatter_prepermuter(d2, d1, c), d2, d1, data + offset, tmp_int);
+        detail::rotate(detail::r2c::prerotator(d2), d2, d1, data + offset);
+        detail::shuffle_fn(data + offset, d2, d1, detail::r2c::shuffle(d2, d1, c, k));
+        if (c > 1) {
+            detail::rotate(detail::r2c::postrotator(d1/c, d2), d2, d1, data + offset);
+        }
+	}
+	CudaSafeCall( cudaFree(tmp_int) );
 }
 
 template void transpose(int*, int, int, int);
@@ -104,34 +113,34 @@ void transpose(T* data, int d1, int d2, int d3) {
 	
 	
     /*if (!small_m && small_n) {
-        std::swap(m, n);
+        std::swap(d2, d1);
         if (!row_major) {
-			//fprintf(stdout, "c2r::skinny_transpose\n");
+			//fprintf(stdout, "c2r::skinny_transpose\d1");
             inplace::detail::c2r::skinny_transpose(
-                data, m, n);
+                data, d2, d1);
         } else {
-			//fprintf(stdout, "r2c::skinny_transpose\n");
+			//fprintf(stdout, "r2c::skinny_transpose\d1");
             inplace::detail::r2c::skinny_transpose(
-                data, m, n);
+                data, d2, d1);
         }
     } else if (small_m) {
         if (!row_major) {
-			//fprintf(stdout, "r2c::skinny_transpose\n");
+			//fprintf(stdout, "r2c::skinny_transpose\d1");
             inplace::detail::r2c::skinny_transpose(
-                data, m, n);
+                data, d2, d1);
         } else {
-			//fprintf(stdout, "c2r::skinny_transpose\n");
+			//fprintf(stdout, "c2r::skinny_transpose\d1");
             inplace::detail::c2r::skinny_transpose(
-                data, m, n);
+                data, d2, d1);
         }
     } else {
-        bool m_greater = m > n;
+        bool m_greater = d2 > d1;
         if (m_greater ^ row_major) {
-			//fprintf(stdout, "r2c::transpose\n");
-            inplace::r2c::transpose(row_major, data, m, n);
+			//fprintf(stdout, "r2c::transpose\d1");
+            inplace::r2c::transpose(row_major, data, d2, d1);
         } else {
-			//fprintf(stdout, "c2r::transpose\n");
-            inplace::c2r::transpose(row_major, data, m, n);
+			//fprintf(stdout, "c2r::transpose\d1");
+            inplace::c2r::transpose(row_major, data, d2, d1);
         }
     }*/
 }
