@@ -16,7 +16,7 @@ namespace c2r {
 template<typename T>
 void transpose(T* data, int d1, int d2, int d3) {
     //std::cout << "Doing C2R transpose of " << d2 << ", " << d1 << std::endl;
-
+    printf("Doing C2R transpose\n");
     int c, t, k;
     extended_gcd(d2, d1, c, t);
     if (c > 1) {
@@ -27,16 +27,18 @@ void transpose(T* data, int d1, int d2, int d3) {
 
     int* tmp_int;
 	CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
-	size_t d1d2 = (size_t)d1 * (size_t)d2;
-	for (size_t i = 0; i < d3; i++) {
-        size_t offset = i * d1d2;
-        if (c > 1) {
-            detail::rotate(detail::c2r::prerotator(d1/c), d2, d1, data + offset);
-        }
-        detail::shuffle_fn(data + offset, d2, d1, detail::c2r::shuffle(d2, d1, c, k));
-        detail::rotate(detail::c2r::postrotator(d2), d2, d1, data + offset);
-        detail::scatter_permute(detail::c2r::scatter_postpermuter(d2, d1, c), d2, d1, data + offset, tmp_int);
+    if (c > 1) {
+        printf("rotation\n");
+        detail::rotate(detail::c2r::prerotator(d1/c), d3, d2, d1, data);
     }
+    //printf("shuffle\n");
+    detail::shuffle_fn(data, d3, d2, d1, detail::c2r::shuffle(d2, d1, c, k));
+    //printf("post rotation\n");
+    detail::rotate(detail::c2r::postrotator(d2), d3, d2, d1, data);
+    //printf("permute\n");
+    detail::scatter_permute(detail::c2r::scatter_postpermuter(d2, d1, c), d3, d2, d1, data, tmp_int);
+    //printf("done\n");
+    
     CudaSafeCall( cudaFree(tmp_int) );
 }
 
@@ -64,16 +66,14 @@ void transpose(T* data, int d1, int d2, int d3) {
 
     int* tmp_int;
     CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
-	size_t d1d2 = (size_t)d1 * (size_t)d2;
-	for (size_t i = 0; i < d3; i++) {
-	    size_t offset = i * d1d2;
-        detail::scatter_permute(detail::r2c::scatter_prepermuter(d2, d1, c), d2, d1, data + offset, tmp_int);
-        detail::rotate(detail::r2c::prerotator(d2), d2, d1, data + offset);
-        detail::shuffle_fn(data + offset, d2, d1, detail::r2c::shuffle(d2, d1, c, k));
-        if (c > 1) {
-            detail::rotate(detail::r2c::postrotator(d1/c, d2), d2, d1, data + offset);
-        }
-	}
+	
+    detail::scatter_permute(detail::r2c::scatter_prepermuter(d2, d1, c), d3, d2, d1, data, tmp_int);
+    detail::rotate(detail::r2c::prerotator(d2), d3, d2, d1, data);
+    detail::shuffle_fn(data, d3, d2, d1, detail::r2c::shuffle(d2, d1, c, k));
+    if (c > 1) {
+        detail::rotate(detail::r2c::postrotator(d1/c, d2), d3, d2, d1, data);
+    }
+    
 	CudaSafeCall( cudaFree(tmp_int) );
 }
 

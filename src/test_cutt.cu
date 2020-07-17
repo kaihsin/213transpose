@@ -77,6 +77,10 @@ void test_cutt(TensorUtil<T>& tu) {
 	
 	//T* ans = (T*)malloc(dataSize);
 	//tu.seq_tt(ans, i_data);
+    /*T* seq_i_data = (T*)malloc(dataSize);
+	memcpy(seq_i_data, i_data, dataSize);
+	T* seq_o_data = (T*)malloc(dataSize);
+    tu.seq_tt(seq_o_data, seq_i_data);*/
 
 	T* o_data = NULL;
 	CudaSafeCall( cudaMallocManaged(&o_data, dataSize) );
@@ -93,6 +97,7 @@ void test_cutt(TensorUtil<T>& tu) {
 
 	//printf("t1 = %.5f\nt2 = %.5f\nTime: %.5fms\n", t1, t2, std::min(t1, t2));
     printf("%.5f\n", std::min(t1, t2));
+    //if (memcmp(seq_o_data, o_data, dataSize)) printf("Error\n");
 	
 	CudaSafeCall( cudaFree(i_data) );
 	CudaSafeCall( cudaFree(o_data) );
@@ -105,7 +110,6 @@ int main(int argc, char** argv) {
 	dim[1] = atoi(argv[2]);
 	dim[2] = atoi(argv[3]);
 	int permutation[3] = {1, 0, 2};
-	size_t dataSize = (long long)dim[0] * dim[1] * dim[2] * sizeof(int);
 	//printf("Data Size = %lld bytes\n", (long long)dataSize);
 	
 	int type_size = atoi(argv[4]);

@@ -2,6 +2,7 @@
 #include "index.h"
 #include "reduced_math.h"
 #include "gcd.h"
+#include <cassert>
 
 namespace inplace {
 namespace detail {
@@ -31,8 +32,10 @@ struct shuffle {
         //int - int
         //Which leads to underflow if the result is negative.
         if (i - (int)c.mod(j) <= m - (int)c.get()) {
+            assert(r >= 0);
             return r;
         } else {
+            assert(r + m >= 0);
             return r + m;
         }
     }
@@ -45,6 +48,7 @@ struct shuffle {
         //The extra mod in here prevents overflowing 32-bit int
         int term_1 = b.mod(k * b.mod(fijdivc));
         int term_2 = ((int)fijmodc) * (int)b.get();
+        assert(term_1 + term_2 >= 0);
         return term_1+term_2;
     }
 };
@@ -56,6 +60,7 @@ struct prerotator {
     __host__ prerotator(int _b) : b(_b) {}
     __host__ __device__
     int operator()(int j) const {
+        assert(b.div(j) <= 2147483648);
         return b.div(j);
     }
     __host__ __device__
@@ -74,6 +79,7 @@ struct postrotator {
     __host__ postrotator(int _m) : m(_m) {}
     __host__ __device__
     int operator()(int j) const {
+        assert(m.mod(j) <= 2147483648);
         return m.mod(j);
     }
     __host__ __device__
@@ -92,6 +98,7 @@ struct postpermuter {
     postpermuter(int _m, int _n, int _c) : m(_m), n(_n), a(_m/_c) {}
     __host__ __device__
     int operator()(int i) const {
+        assert((i * n - (i / a)) % m >= 0);
         return (i * n - (i / a)) % m;
     }
     __host__ __device__
@@ -115,9 +122,12 @@ struct prepermuter {
     }
     __host__ __device__
     int operator()(int i) const {
-        int k = ((c - 1) * i) % c;
-        int l = ((c - 1 + i) / c);
-        int r = k * a + ((l * q) % a);
+        //printf("i = %d, c = %d\n", i, c);
+        size_t k = static_cast<size_t>(((c - 1) * i) % c);
+        size_t l = static_cast<size_t>(((c - 1 + i) / c));
+        size_t long_a = static_cast<size_t>(a);
+        size_t long_q = static_cast<size_t>(q);
+        int r = static_cast<int>(k * long_a + ((l * long_q) % long_a));
         return r;
     }
     __host__ __device__

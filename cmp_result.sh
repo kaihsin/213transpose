@@ -3,35 +3,24 @@
 # $d1 $d2 $d3 $size_of_data_type
 
 
-PARAMS=(    "2 343750000 2 4"\
-	"2 171875000 4 4"\
-	"2 85937500 8 4"\
-	"2 42968750 16 4"\
-	"2 21484375 32 4"\
-	"2 10742187 64 4"\
-	"2 5371093 128 4"\
-	"2 2685546 256 4"\
-	"2 1342773 512 4"\
-	"2 671386 1024 4"\
-	"2 335693 2048 4"\
-	"2 167846 4096 4"\
-	"2 83923 8192 4"\
-	"2 41961 16384 4"\
-	"2 20980 32768 4"\
-	"2 10490 65536 4"\
-	"2 5245 131072 4"\
-	"2 2622 262144 4"\
-	"2 1311 524288 4"\
-	"2 655 1048576 4"\
-	"2 327 2097152 4"\
-	"2 163 4194304 4"\
-	"2 81 8388608 4"\
-	"2 40 16777216 4"\
-	"2 20 33554432 4"\
-	"2 10 67108864 4"\
-	"2 5 134217728 4"\
-	"2 2 268435456 4"\
+PARAMS=("34 34 1189446 4"\
+        "34 68 594723 4"\
+        "34 136 297361 4"\
+        "34 272 148680 4"\
+        "34 544 74340 4"\
+        "34 1088 37170 4"\
+        "34 2176 18585 4"\
+        "34 4352 9292 4"\
+        "34 8704 4646 4"\
+        "34 17408 2323 4"\
+        "34 34816 1161 4"\
+        "34 69632 580 4"\
+        "34 139264 290 4"\
+        "34 278528 145 4"\
+        "34 557056 72 4"\
+        "34 1114112 36 4"
 )
+
 
 
 
@@ -51,13 +40,13 @@ for ((i=0;i<${#PARAMS[@]};++i)) ; do
         #    continue
         #fi
         
-        if [ $i -le 16 ]; then
-            continue
-        fi
+        #if [ $i -le 16 ]; then
+        #    continue
+        #fi
         
         echo "Case $i"
-        echo "./test_213inplace ${PARAMS[$i]} > ./testcaes/fix_d1/res_case$i.out"
-        ./test_213inplace ${PARAMS[$i]} ./testcase/fix_d1/res_case$i.out
-		diff ./testcase/fix_d1/ans_case$i.out ./testcase/fix_d1/res_case$i.out
-		rm -f ./testcase/fix_d1/res_case$i.out
+        echo "./test_213inplace ${PARAMS[$i]} > ./testcaes/large/res_case$i.out"
+        ./test_213inplace ${PARAMS[$i]} ./testcase/large/res_case$i.out
+		diff ./testcase/large/ans_case$i.out ./testcase/large/res_case$i.out
+		rm -f ./testcase/large/res_case$i.out
 done
