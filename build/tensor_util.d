@@ -56,16 +56,15 @@ tensor_util.o: src/tensor_util.cpp /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
  /usr/include/c++/7/bits/std_abs.h /usr/include/c++/7/functional \
- /usr/include/c++/7/bits/stl_function.h \
+ /usr/include/c++/7/bits/stl_function.h /usr/include/c++/7/bits/move.h \
+ /usr/include/c++/7/bits/concept_check.h /usr/include/c++/7/type_traits \
  /usr/include/c++/7/backward/binders.h /usr/include/c++/7/new \
  /usr/include/c++/7/exception /usr/include/c++/7/bits/exception.h \
  /usr/include/c++/7/bits/exception_ptr.h \
  /usr/include/c++/7/bits/exception_defines.h \
  /usr/include/c++/7/bits/cxxabi_init_exception.h \
  /usr/include/c++/7/typeinfo /usr/include/c++/7/bits/hash_bytes.h \
- /usr/include/c++/7/bits/nested_exception.h \
- /usr/include/c++/7/bits/move.h /usr/include/c++/7/bits/concept_check.h \
- /usr/include/c++/7/type_traits /usr/include/c++/7/tuple \
+ /usr/include/c++/7/bits/nested_exception.h /usr/include/c++/7/tuple \
  /usr/include/c++/7/utility /usr/include/c++/7/bits/stl_relops.h \
  /usr/include/c++/7/bits/stl_pair.h /usr/include/c++/7/initializer_list \
  /usr/include/c++/7/array /usr/include/c++/7/stdexcept \

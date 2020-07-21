@@ -1,22 +1,13 @@
-#include "equations.h"
+
 
 namespace inplace {
 namespace detail {
 
 template<typename T, typename F>
-__global__ void smem_row_shuffle(int m, int n, T* d, F s);
+__global__ void compress_row_shuffle(int d3, int d2, int d1, size_t smem_size, T* d, F s);
 
-//template __global__ void smem_row_shuffle(int m, int n, float* d, c2r::shuffle s);
-//template __global__ void smem_row_shuffle(int m, int n, double* d, c2r::shuffle s);
-
-//template __global__ void smem_row_shuffle(int m, int n, int* d, c2r::shuffle s);
-//template __global__ void smem_row_shuffle(int m, int n, long long* d, c2r::shuffle s);
-
-/*template __global__ void smem_row_shuffle(int m, int n, float* d, r2c::shuffle s);
-template __global__ void smem_row_shuffle(int m, int n, double* d, r2c::shuffle s);
-
-template __global__ void smem_row_shuffle(int m, int n, int* d, r2c::shuffle s);
-template __global__ void smem_row_shuffle(int m, int n, long long* d, r2c::shuffle s);*/
+template<typename T, typename F>
+__global__ void smem_row_shuffle(int d3, int d2, int d1, T* d, F s);
 
 }
 }

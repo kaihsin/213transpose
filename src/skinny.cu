@@ -276,20 +276,7 @@ void skinny_row_op(F s, int d3, int d2, int d1, T* d) {
     
         //long_row_shuffle<T, F, 4><<<(d1-1)/(256*4)+1,256>>>(d2, d1, i, d, tmp, s);
         //cudaMemcpy(d + d1 * i, tmp, sizeof(T) * d1, cudaMemcpyDeviceToDevice);
-
     }*/
-}
-
-int get_num_thread(int d1) {
-    /*int n_threads = 1;
-    while (n_threads < d1 && n_threads < 1024) {
-        n_threads <<= 1;
-    }
-    return n_threads;*/
-    int msb = static_cast<int>(log2(d1)); // most significant bit
-    unsigned n_threads = static_cast<unsigned>(pow(2, msb + 1));
-    unsigned lim = 1024;
-    return static_cast<int>(min(n_threads, lim));
 }
 
 template<typename T, typename F>

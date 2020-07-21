@@ -7,15 +7,18 @@
 #include "introspect.h"
 #include "util.h"
 #include "equations.h"
-#include <cstdio>
+#include <utility>
+#include <algorithm>
+//#include <cstdio>
 
 namespace inplace {
 namespace detail {
+
+using vector_pair = std::vector<std::pair<int, int> >;
     
 template<typename Fn>
-void scatter_cycles(Fn f, std::vector<int>& heads, std::vector<int>& lens) {
+void scatter_cycles(Fn f, int* heads, int* lens, vector_pair& vp) {
     int len = f.len();
-    //printf("len = %d\n", len);
     thrust::counting_iterator<int> i(0);
     std::set<int> unvisited(i, i+len);
     while(!unvisited.empty()) {
@@ -24,7 +27,8 @@ void scatter_cycles(Fn f, std::vector<int>& heads, std::vector<int>& lens) {
         unvisited.erase(unvisited.begin());
         int dest = f(idx);
         if (idx != dest) {
-            heads.push_back(idx);
+            //heads.push_back(idx);
+            int head = idx;
             int start = idx;
             int len = 1;
             //std::cout << "Cycle: " << start << " " << dest << " ";
@@ -37,8 +41,14 @@ void scatter_cycles(Fn f, std::vector<int>& heads, std::vector<int>& lens) {
                 //std::cout << dest << " ";
             }
             //std::cout << std::endl;
-            lens.push_back(len);
+            //lens.push_back(len);
+            vp.push_back(std::make_pair(len, head));
         }
+    }
+    sort(vp.begin(), vp.end());
+    for (size_t i = 0; i < vp.size(); i++) {
+        heads[i] = vp[i].second;
+        lens[i] = vp[i].first;
     }
 }
 
@@ -79,45 +89,72 @@ __device__ __forceinline__ void unroll_cycle_row_permute(
 
 template<typename T, typename F, int U>
 __global__ void cycle_row_permute(F f, T* data, int* heads,
-                                  int* lens, int n_heads) {
-    int j = blockIdx.x * blockDim.x + threadIdx.x;
-    int h = blockIdx.y * blockDim.y + threadIdx.y;
+                                  int* lens, int n_heads, int d3) {
     int d1 = f.n;
-    row_major_index rm(f.m, f.n);
-
-
-    if ((j < d1) && (h < n_heads)) {
+    int d2 = f.m;
+    row_major_index rm(d2, d1);
+    size_t d1d2 = (size_t)d1 * (size_t)d2;
+    size_t nhd3 = (size_t)n_heads * (size_t)d3;
+    
+    for (size_t hk = blockIdx.x; hk < nhd3; hk += gridDim.x) {
+        size_t k = hk / (size_t)n_heads;
+        size_t offset = k * d1d2;
+        size_t h = hk % n_heads;
         int i = heads[h];
         int l = lens[h];
-        unroll_cycle_row_permute<T, F, U>(f, rm, data, i, j, l);
+        for (int j = threadIdx.x; j < d1; j += blockDim.x) {
+            unroll_cycle_row_permute<T, F, U>(f, rm, data + offset, i, j, l);
+        }
     }
+    /*int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int h = blockIdx.y * blockDim.y + threadIdx.y;
+    int d1 = f.n;
+    int d2 = f.m;
+    row_major_index rm(d2, d1);
+    if ((j < d1) && (h < n_heads)) {
+        size_t d1d2 = (size_t)d1 * (size_t)d2;
+        for (size_t k = 0; k < d3; k++) {
+            size_t offset = k * d1d2;
+            int i = heads[h];
+            int l = lens[h];
+            unroll_cycle_row_permute<T, F, U>(f, rm, data + offset, i, j, l);
+        }
+    }*/
+}
+
+int get_num_threads(int d1) {
+    return min(1024, (d1 & -d1));
 }
 
 template<typename T, typename F>
 void scatter_permute(F f, int d3, int d2, int d1, T* data, int* tmp) {
-    std::vector<int> heads;
-    std::vector<int> lens;
-    scatter_cycles(f, heads, lens);
     int* d_heads = tmp;
     int* d_lens = tmp + d2 / 2;
-    cudaMemcpy(d_heads, heads.data(), sizeof(int)*heads.size(),
+    vector_pair vp;
+    scatter_cycles(f, d_heads, d_lens, vp);
+    /*cudaMemcpy(d_heads, heads.data(), sizeof(int)*heads.size(),
                cudaMemcpyHostToDevice);
     cudaMemcpy(d_lens, lens.data(), sizeof(int)*lens.size(),
-               cudaMemcpyHostToDevice);
-    int n_threads_x = 256;
+               cudaMemcpyHostToDevice);*/
+
+    int n_threads = 64;
+    
+    int n_heads = (int)vp.size();
+    int active_blocks = get_num_block(cycle_row_permute<T, F, 4>, n_threads, 0);
+    int n_blocks = n_heads * d3; //min(n_heads * d3, active_blocks);
+    //printf("active_blocks = %d\n", active_blocks);
+    
+    cycle_row_permute<T, F, 4><<<n_blocks, n_threads>>>(f, data, d_heads, d_lens, n_heads, d3);
+    
+    /*int n_threads_x = 256;
     int n_threads_y = 1024/n_threads_x;
     
     int n_blocks_x = div_up(d1, n_threads_x);
     int n_blocks_y = div_up(heads.size(), n_threads_y);
-    
-    size_t d1d2 = (size_t)d1 * (size_t)d2;
-	for (size_t i = 0; i < d3; i++) {
-        size_t offset = i * d1d2;
-        cycle_row_permute<T, F, 4>
-        <<<dim3(n_blocks_x, n_blocks_y),
-        dim3(n_threads_x, n_threads_y)>>>
-        (f, data + offset, d_heads, d_lens, heads.size());
-    }
+    cycle_row_permute<T, F, 4>
+    <<<dim3(n_blocks_x, n_blocks_y),
+    dim3(n_threads_x, n_threads_y)>>>
+    (f, data, d_heads, d_lens, heads.size(), d3);*/
 }
 
 

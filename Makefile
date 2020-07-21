@@ -14,13 +14,14 @@ OBJSLIB = $(OBJ_DIR)/test_213inplace.o\
 		$(OBJ_DIR)/reduced_math.o\
 		$(OBJ_DIR)/cudacheck.o\
 		$(OBJ_DIR)/tensor_util.o\
+        $(OBJ_DIR)/util.o\
 
 OBJSGEN = $(OBJ_DIR)/gen_ans.o \
 		$(OBJ_DIR)/tensor_util.o
 
 CC = g++
 NVCC = nvcc
-CFLAGS = -I$(INC_DIR) -std=c++11 -O3
+CFLAGS = -I$(INC_DIR) -std=c++14 -O3
 NVCCFLAGS = -arch=sm_61 -rdc=true
 
 all: mkdir test_213inplace

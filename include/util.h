@@ -1,6 +1,9 @@
 #pragma once
+
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+#include "introspect.h"
+#include "cudacheck.h"
 
 inline void check_error(std::string message="") {
     cudaError_t error = cudaGetLastError();
@@ -29,3 +32,13 @@ __device__
 inline size_t chunk_right(size_t id, size_t p, size_t n) {
 	return ((id + 1) * n) / p;
 }
+
+template<typename F>
+int get_num_block(F func, int n_threads, size_t smem_size) {
+    int numBlocksPerSm;
+    CudaSafeCall( cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &numBlocksPerSm, func, n_threads, smem_size) );
+    return numBlocksPerSm * inplace::n_sms();
+}
+
+int get_num_thread(int d1);

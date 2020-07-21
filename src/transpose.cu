@@ -26,9 +26,9 @@ void transpose(T* data, int d1, int d2, int d3) {
     }
 
     int* tmp_int;
-	CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
+    //CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
+    CudaSafeCall( cudaMallocManaged(&tmp_int, sizeof(int) * d2) );
     if (c > 1) {
-        printf("rotation\n");
         detail::rotate(detail::c2r::prerotator(d1/c), d3, d2, d1, data);
     }
     //printf("shuffle\n");
@@ -65,7 +65,8 @@ void transpose(T* data, int d1, int d2, int d3) {
     }
 
     int* tmp_int;
-    CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
+    //CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
+    CudaSafeCall( cudaMallocManaged(&tmp_int, sizeof(int) * d2) );
 	
     detail::scatter_permute(detail::r2c::scatter_prepermuter(d2, d1, c), d3, d2, d1, data, tmp_int);
     detail::rotate(detail::r2c::prerotator(d2), d3, d2, d1, data);
@@ -109,6 +110,7 @@ void transpose(T* data, int d1, int d2, int d3) {
 		else {
             inplace::c2r::transpose(data, d1, d2, d3);
         }
+        //inplace::c2r::transpose(data, d1, d2, d3);
 	}
 	
 	
