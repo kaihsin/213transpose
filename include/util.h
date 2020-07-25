@@ -4,6 +4,7 @@
 #include <thrust/system_error.h>
 #include "introspect.h"
 #include "cudacheck.h"
+#include "chrono"
 
 inline void check_error(std::string message="") {
     cudaError_t error = cudaGetLastError();
@@ -42,3 +43,14 @@ int get_num_block(F func, int n_threads, size_t smem_size) {
 }
 
 int get_num_thread(int d1);
+
+class Timer {
+    using clock = std::chrono::high_resolution_clock;
+    clock::time_point start_tp;
+    clock::time_point stop_tp;
+    
+public:
+    void start();
+    void stop();
+    double elapsed_time();
+};

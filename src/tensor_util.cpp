@@ -68,12 +68,7 @@ template void TensorUtil<double>::print_mat(double*);
 
 template<typename T>
 void TensorUtil<T>::write_file(T* data) {
-	if (fp == stdout) {
-		print_mat(data);
-	}
-	else {
-		fwrite(data, sizeof(T), vol, fp);
-	}
+	fwrite(data, sizeof(T), vol, fp);
 }
 
 template void TensorUtil<int>::write_file(int*);

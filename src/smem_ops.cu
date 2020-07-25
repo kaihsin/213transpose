@@ -59,12 +59,12 @@ __global__ void smem_row_shuffle(int d3, int d2, int d1, T* d, F s) {
         int j = threadIdx.x;
         __syncthreads();
         for(; j < d1; j+= blockDim.x) {
-            shared_row[j] = d[offset + rm(i, j)];
+            shared_row[j] = d[offset + rm(i, s(j))];
         }
         j = threadIdx.x;
         __syncthreads();
         for(;j < d1; j+= blockDim.x) {
-            d[offset + rm(i, j)] = shared_row[s(j)];
+            d[offset + rm(i, j)] = shared_row[j];
         }
     }
 }

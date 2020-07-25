@@ -55,6 +55,7 @@ template<typename T>
 void transpose(T* data, int d1, int d2, int d3) {
     
     //std::cout << "Doing R2C transpose of " << d2 << ", " << d1 << std::endl;
+    printf("Doing R2C transpose\n");
 
     int c, t, k;
     extended_gcd(d2, d1, c, t);
@@ -98,14 +99,16 @@ void transpose(T* data, int d1, int d2, int d3) {
 			inplace::detail::c2r::skinny_transpose(data, d1, d2, d3);
 		}
 		else {
-			std::swap(d1, d2);
-			inplace::detail::r2c::skinny_transpose(data, d1, d2, d3);
+			//std::swap(d1, d2);
+			//inplace::detail::r2c::skinny_transpose(data, d1, d2, d3);
+            inplace::detail::r2c::skinny_transpose(data, d2, d1, d3);
 		}
 	}
 	else { // For large d1 and d2
         if (d2 < d1) {
-			std::swap(d1, d2);
-            inplace::r2c::transpose(data, d1, d2, d3);
+			//std::swap(d1, d2);
+            //inplace::r2c::transpose(data, d1, d2, d3);
+            inplace::r2c::transpose(data, d2, d1, d3);
         }
 		else {
             inplace::c2r::transpose(data, d1, d2, d3);

@@ -313,6 +313,11 @@ rotate.o : src/rotate.cu \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/system_error.inl \
     include/introspect.h \
     include/cudacheck.h \
+    /usr/include/c++/7/chrono \
+    /usr/include/c++/7/ratio \
+    /usr/include/c++/7/limits \
+    /usr/include/c++/7/ctime \
+    /usr/include/c++/7/bits/parse_numbers.h \
     include/equations.h \
     include/index.h \
     include/reduced_math.h \

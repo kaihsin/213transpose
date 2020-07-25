@@ -61,7 +61,7 @@ void _213transpose(TensorUtil<T>& tu) {
     fprintf(txtfp, "%.5f\n", t);
     fclose(txtfp);
 	
-    tu.write_file(d_data);
+    if (tu.fp != NULL) tu.write_file(d_data);
 	
 	CudaSafeCall( cudaFree(d_data) );
 }
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 	dim[2] = atoi(argv[3]);
 
 	int type_size = atoi(argv[4]);
-	FILE* fp = (argc == 6)? fopen(argv[5], "wb") : stdout;
+	FILE* fp = (argc == 6)? fopen(argv[5], "wb") : NULL;
 	int permutation[3] = {1, 0, 2};
 	if (type_size == 4) {
 		TensorUtil<int> tu(fp, 3, dim, permutation);
@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
 		TensorUtil<long long> tu(fp, 3, dim, permutation);
 		_213transpose<long long>(tu);
 	}
-	if (fp != stdout) fclose(fp);
+	if (fp != NULL) fclose(fp);
 	
 	return 0;
 }

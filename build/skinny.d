@@ -319,6 +319,11 @@ skinny.o : src/skinny.cu \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/system_error.h \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/system_error.inl \
     include/cudacheck.h \
+    /usr/include/c++/7/chrono \
+    /usr/include/c++/7/ratio \
+    /usr/include/c++/7/limits \
+    /usr/include/c++/7/ctime \
+    /usr/include/c++/7/bits/parse_numbers.h \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/cooperative_groups.h \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/cooperative_groups_helpers.h \
     include/save_array.h \

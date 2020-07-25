@@ -157,9 +157,10 @@ struct prerotator {
 
 
 struct shuffle {
-    reduced_divisor m;
+    /*reduced_divisor m;
     reduced_divisor n;
-    reduced_divisor b;
+    reduced_divisor b;*/
+    size_t m, n, b;
     __host__
     shuffle(int _m, int _n, int _c, int _k) : m(_m), n(_n), b(_n/_c) {}
     int i;
@@ -169,8 +170,11 @@ struct shuffle {
     }    
     __host__ __device__
     int operator()(const int& j) {
-        int r = m.mod(b.div(j) + i) + j * (int)m.get();
-        return n.mod(r);
+        long long term1 = (j / b + i);
+        long long term2 = (long long)j * m;
+        return (term1 % m + term2) % n;
+        //int r = m.mod(b.div(j) + i) + j * (int)m.get();
+        //return n.mod(r);
     }
 };
 
