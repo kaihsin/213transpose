@@ -1,6 +1,7 @@
 #include "rotate.h"
 #include "util.h"
 #include "equations.h"
+#include "smem.h"
 
 namespace inplace {
 namespace detail {
@@ -179,29 +180,52 @@ __global__ void fine_col_rotate(F fn, int d3, int d2, int d1, T* d) {
 }
 
 template<typename F, typename T>
+__global__ void small_d1d2_rotate(F fn, int d3, int d2, int d1, T* d) {
+	T* smem = shared_memory<T>();
+	row_major_index rm(d2, d1);
+	size_t d1d2 = (size_t)d1 * (size_t)d2;
+	for (size_t k = blockIdx.x; k < d3; k += gridDim.x) {
+		size_t offset = k * d1d2;
+		__syncthreads();
+		for (size_t idx = threadIdx.x; idx < d1d2; idx += blockDim.x) {
+			size_t j = idx % d1;
+			size_t i = ((idx / d1) - fn(j) + d2) % d2;
+			smem[rm(i, j)] = d[offset + idx];
+		}
+		__syncthreads();
+		for (size_t idx = threadIdx.x; idx < d1d2; idx += blockDim.x) {
+			d[offset + idx] = smem[idx];
+		}
+	}
+}
+
+template<typename F, typename T>
 void rotate(F fn, int d3, int d2, int d1, T* data) {
-    //int n_blocks = div_up(d1, 32);
-    
-    //size_t d1d2 = (size_t)d1 * (size_t)d2;
-	//for (size_t i = 0; i < d3; i++) {
-    //    size_t offset = i * d1d2;
-    if (fn.fine()) {
-        dim3 block_dim(32, 32);
-        int n_threads = block_dim.x * block_dim.y;
-        int n_blocks_x = min(d3, get_num_block(fine_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
-        int n_blocks_y = (n_blocks_x + d3 - 1) / d3;
-        dim3 grid_dim(n_blocks_x, n_blocks_y);
-        //printf("n_blocks = %d\n", get_num_block(fine_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
-        fine_col_rotate<<<grid_dim, block_dim>>>(fn, d3, d2, d1, data);
-    }
-    dim3 block_dim(32, 16);
-    int n_threads = block_dim.x * block_dim.y;
-    int n_blocks_x = min(d3, get_num_block(coarse_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
-    int n_blocks_y = (n_blocks_x + d3 - 1) / d3;
-    dim3 grid_dim(n_blocks_x, n_blocks_y);
-    coarse_col_rotate<<<grid_dim, block_dim>>>(
-        fn, d3, d2, d1, data);
-    //}
+	size_t smem_size = d1 * d2 * sizeof(T);
+	if (smem_size <= shared_mem_per_block()) {
+		//printf("small_d1d2_rotate\n");
+		int n_threads = 1024;
+		int n_blocks = min(d3, get_num_block(small_d1d2_rotate<F, T>, n_threads, smem_size));
+		small_d1d2_rotate<<<n_blocks, n_threads, smem_size>>>(fn, d3, d2, d1, data);
+	}
+	else {
+		if (fn.fine()) {
+			dim3 block_dim(32, 32);
+			int n_threads = block_dim.x * block_dim.y;
+			int n_blocks_x = min(d3, get_num_block(fine_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
+			int n_blocks_y = (n_blocks_x + d3 - 1) / d3;
+			dim3 grid_dim(n_blocks_x, n_blocks_y);
+			//printf("n_blocks = %d\n", get_num_block(fine_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
+			fine_col_rotate<<<grid_dim, block_dim>>>(fn, d3, d2, d1, data);
+		}
+		dim3 block_dim(32, 16);
+		int n_threads = block_dim.x * block_dim.y;
+		int n_blocks_x = min(d3, get_num_block(coarse_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
+		int n_blocks_y = (n_blocks_x + d3 - 1) / d3;
+		dim3 grid_dim(n_blocks_x, n_blocks_y);
+		coarse_col_rotate<<<grid_dim, block_dim>>>(
+			fn, d3, d2, d1, data);
+	}
 }
 
 template void rotate(c2r::prerotator, int, int, int, float*);

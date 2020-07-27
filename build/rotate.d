@@ -213,4 +213,5 @@ rotate.o build/rotate.d : src/rotate.cu \
     include/index.h \
     include/reduced_math.h \
     include/gcd.h \
-    /usr/include/c++/7/cassert
+    /usr/include/c++/7/cassert \
+    include/smem.h

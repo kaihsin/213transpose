@@ -11,17 +11,23 @@ namespace detail {
 
 template<typename T, typename F>
 void enact(T* data, int d3, int d2, int d1, F s) {
-    printf("Shuffle function (d1, d2, d3) = (%d, %d, %d)\n", d1, d2, d3);
-    size_t smem_bytes = sizeof(T) * (size_t)d1;
-    /*if (2 * d1 * sizeof(T) <= shared_mem_per_block() / 16) {
-        printf("compress row shuffle\n");
+	size_t d1d2_size = d1 * d2 * sizeof(T);
+	size_t smem_bytes = sizeof(T) * (size_t)d1;
+	if (d1d2_size <= shared_mem_per_block()) {
+		int n_threads = 1024;
+		int n_blocks = min(d3, get_num_block(small_d1d2_shuffle<T, F>, n_threads, d1d2_size));
+		small_d1d2_shuffle<<<n_blocks, n_threads, d1d2_size>>>(d3, d2, d1, data, s);
+	}
+    else if (2 * d1 * sizeof(T) <= shared_mem_per_block() / 32) {
+        //printf("compress row shuffle\n");
         int n_threads = get_num_thread(d1);
-        printf("n_threads = %d\n", n_threads);
-        int n_blocks = min(d2 * d3, get_num_block(compress_row_shuffle<T, F>, n_threads, shared_mem_per_block() / 16));
-        printf("n_blocks = %d\n", n_blocks);
-        compress_row_shuffle<<<n_blocks, n_threads, shared_mem_per_block() / 16>>>(d3, d2, d1, shared_mem_per_block() / 16 / sizeof(T), data, s);
+		//int n_threads = 32;
+        //printf("n_threads = %d\n", n_threads);
+        int n_blocks = min(d2 * d3, get_num_block(compress_row_shuffle<T, F>, n_threads, shared_mem_per_block() / 32));
+        //printf("n_blocks = %d\n", n_blocks);
+        compress_row_shuffle<<<n_blocks, n_threads, shared_mem_per_block() / 32>>>(d3, d2, d1, shared_mem_per_block() / 32 / sizeof(T), data, s);
     }
-    else*/ if (smem_bytes <= shared_mem_per_block()) {
+    else if (smem_bytes <= shared_mem_per_block()) {
         int n_threads = get_num_thread(d1);
         printf("n_threads = %d\n", n_threads);
         int n_blocks = min(d2 * d3, get_num_block(smem_row_shuffle<T, F>, n_threads, smem_bytes));

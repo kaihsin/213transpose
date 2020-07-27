@@ -7,25 +7,55 @@ namespace inplace {
 namespace detail {
 
 template<typename T, typename F>
+__global__ void small_d1d2_shuffle(int d3, int d2, int d1, T* d, F s) {
+	T* smem = shared_memory<T>();
+	row_major_index rm(d2, d1);
+	size_t d1d2 = (size_t)d1 * (size_t)d2;
+	for (size_t k = blockIdx.x; k < d3; k += gridDim.x) {
+		size_t offset = k * d1d2;
+		__syncthreads();
+		for (size_t idx = threadIdx.x; idx < d1d2; idx += blockDim.x) {
+			smem[idx] = d[offset + idx];
+		}
+		__syncthreads();
+		for (size_t idx = threadIdx.x; idx < d1d2; idx += blockDim.x) {
+			size_t j = idx % d1;
+			size_t i = (idx / d1);
+			s.set_i(i);
+			d[offset + idx] = smem[rm(i, s(j))];
+		}
+	}
+}
+
+template __global__ void small_d1d2_shuffle(int, int, int, float*, c2r::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, double*, c2r::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, int*, c2r::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, long long*, c2r::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, float*, r2c::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, double*, r2c::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, int*, r2c::shuffle);
+template __global__ void small_d1d2_shuffle(int, int, int, long long*, r2c::shuffle);
+
+template<typename T, typename F>
 __global__ void compress_row_shuffle(int d3, int d2, int d1, size_t smem_size, T* d, F s) {
     T* smem = shared_memory<T>();
     row_major_index rm(d2, d1);
     size_t d2d3 = (size_t)d2 * (size_t)d3;
     size_t l = chunk_left(blockIdx.x, gridDim.x, d2d3);
     size_t r = chunk_right(blockIdx.x, gridDim.x, d2d3);
-    size_t batch_size = smem_size / d1;
+    size_t batch_size = smem_size / (size_t)d1;
     for (size_t lv = l; lv < r; lv += batch_size) {
         batch_size = min(batch_size, r - lv);
         size_t offset = lv * (size_t)d1;
         size_t idx = threadIdx.x;
         __syncthreads();
-        for (; idx < batch_size * d1; idx += gridDim.x) {
+        for (; idx < batch_size * d1; idx += blockDim.x) {
             smem[idx] = d[offset + idx];
         }
         
         idx = threadIdx.x;
         __syncthreads();
-        for (; idx < batch_size * d1; idx += gridDim.x) {
+        for (; idx < batch_size * d1; idx += blockDim.x) {
             int u = (idx / d1);
             size_t i = (lv + u) % d2;
             size_t j = idx % d1;

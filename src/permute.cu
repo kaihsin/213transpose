@@ -4,6 +4,7 @@
 #include "introspect.h"
 #include "util.h"
 #include "equations.h"
+#include "smem.h"
 #include <utility>
 #include <algorithm>
 #include <cstdio>
@@ -137,48 +138,58 @@ __global__ void cycle_row_permute(F f, T* data, int* heads,
 }
 
 template<typename T, typename F>
-void scatter_permute(F f, int d3, int d2, int d1, T* data, int* tmp) {
-    int* d_heads = tmp;
-    int* d_lens = tmp + d2 / 2;
-    
-    vector_pair vp;
-    scatter_cycles(f, d_heads, d_lens, vp);
-    
-    /*cudaMemcpy(d_heads, heads.data(), sizeof(int)*heads.size(),
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(d_lens, lens.data(), sizeof(int)*lens.size(),
-               cudaMemcpyHostToDevice);*/
+__global__ void small_d1d2_permute(F f, int d3, int d2, int d1, T* d) {
+	T* smem = shared_memory<T>();
+	row_major_index rm(d2, d1);
+	size_t d1d2 = (size_t)d1 * (size_t)d2;
+	for (size_t k = blockIdx.x; k < d3; k += gridDim.x) {
+		size_t offset = k * d1d2;
+		__syncthreads();
+		for (size_t idx = threadIdx.x; idx < d1d2; idx += blockDim.x) {
+			size_t j = idx % d1;
+			size_t i = f(idx / d1);
+			smem[rm(i, j)] = d[offset + idx];
+		}
+		__syncthreads();
+		for (size_t idx = threadIdx.x; idx < d1d2; idx += blockDim.x) {
+			d[offset + idx] = smem[idx];
+		}
+	}
+}
 
-    int n_threads = 64;
-    
-    int n_heads = (int)vp.size();
-    int active_blocks = get_num_block(cycle_row_permute<T, F, 4>, n_threads, 0);
-    int n_blocks = n_heads * d3; //min(n_heads * d3, active_blocks);
-    //printf("active_blocks = %d\n", active_blocks);
-    
-    cycle_row_permute<T, F, 4><<<n_blocks, n_threads>>>(f, data, d_heads, d_lens, n_heads, d3);
-    
-    /*int n_threads_x = 256;
-    int n_threads_y = 1024/n_threads_x;
-    
-    int n_blocks_x = div_up(d1, n_threads_x);
-    int n_blocks_y = div_up(heads.size(), n_threads_y);
-    cycle_row_permute<T, F, 4>
-    <<<dim3(n_blocks_x, n_blocks_y),
-    dim3(n_threads_x, n_threads_y)>>>
-    (f, data, d_heads, d_lens, heads.size(), d3);*/
+template<typename T, typename F>
+void scatter_permute(F f, int d3, int d2, int d1, T* data) {
+	
+	size_t smem_size = d1 * d2 * sizeof(T);
+	if (smem_size <= shared_mem_per_block()) {
+		int n_threads = 1024;
+		int n_blocks = min(d3, get_num_block(small_d1d2_permute<T, F>, n_threads, smem_size));
+		small_d1d2_permute<<<n_blocks, n_threads, smem_size>>>(f, d3, d2, d1, data);
+	}
+	else {
+		int* d_heads;
+		CudaSafeCall( cudaMallocManaged(&d_heads, sizeof(int) * d2) );
+		int* d_lens = d_heads + d2 / 2;
+		vector_pair vp;
+		scatter_cycles(f, d_heads, d_lens, vp);
+		int n_threads = 64;
+		int n_heads = (int)vp.size();
+		int active_blocks = get_num_block(cycle_row_permute<T, F, 4>, n_threads, 0);
+		int n_blocks = n_heads * d3; //min(n_heads * d3, active_blocks);
+		cycle_row_permute<T, F, 4><<<n_blocks, n_threads>>>(f, data, d_heads, d_lens, n_heads, d3);
+	}
 }
 
 
-template void scatter_permute(c2r::scatter_postpermuter, int, int, int, float*, int*);
-template void scatter_permute(c2r::scatter_postpermuter, int, int, int, double*, int*);
-template void scatter_permute(c2r::scatter_postpermuter, int, int, int, int*, int*);
-template void scatter_permute(c2r::scatter_postpermuter, int, int, int, long long*, int*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, int, float*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, int, double*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, int, int*);
+template void scatter_permute(c2r::scatter_postpermuter, int, int, int, long long*);
 
-template void scatter_permute(r2c::scatter_prepermuter, int, int, int, float*, int*);
-template void scatter_permute(r2c::scatter_prepermuter, int, int, int, double*, int*);
-template void scatter_permute(r2c::scatter_prepermuter, int, int, int, int*, int*);
-template void scatter_permute(r2c::scatter_prepermuter, int, int, int, long long*, int*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, int, float*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, int, double*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, int, int*);
+template void scatter_permute(r2c::scatter_prepermuter, int, int, int, long long*);
 
 
 }

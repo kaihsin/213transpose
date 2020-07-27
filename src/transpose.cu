@@ -25,9 +25,6 @@ void transpose(T* data, int d1, int d2, int d3) {
         k = t;
     }
 
-    int* tmp_int;
-    //CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
-    CudaSafeCall( cudaMallocManaged(&tmp_int, sizeof(int) * d2) );
     if (c > 1) {
         detail::rotate(detail::c2r::prerotator(d1/c), d3, d2, d1, data);
     }
@@ -36,10 +33,8 @@ void transpose(T* data, int d1, int d2, int d3) {
     //printf("post rotation\n");
     detail::rotate(detail::c2r::postrotator(d2), d3, d2, d1, data);
     //printf("permute\n");
-    detail::scatter_permute(detail::c2r::scatter_postpermuter(d2, d1, c), d3, d2, d1, data, tmp_int);
+    detail::scatter_permute(detail::c2r::scatter_postpermuter(d2, d1, c), d3, d2, d1, data);
     //printf("done\n");
-    
-    CudaSafeCall( cudaFree(tmp_int) );
 }
 
 template void transpose(int*, int, int, int);
@@ -64,19 +59,13 @@ void transpose(T* data, int d1, int d2, int d3) {
     } else {
         k = t;
     }
-
-    int* tmp_int;
-    //CudaSafeCall( cudaMalloc(&tmp_int, sizeof(int) * d2) );
-    CudaSafeCall( cudaMallocManaged(&tmp_int, sizeof(int) * d2) );
 	
-    detail::scatter_permute(detail::r2c::scatter_prepermuter(d2, d1, c), d3, d2, d1, data, tmp_int);
+    detail::scatter_permute(detail::r2c::scatter_prepermuter(d2, d1, c), d3, d2, d1, data);
     detail::rotate(detail::r2c::prerotator(d2), d3, d2, d1, data);
     detail::shuffle_fn(data, d3, d2, d1, detail::r2c::shuffle(d2, d1, c, k));
     if (c > 1) {
         detail::rotate(detail::r2c::postrotator(d1/c, d2), d3, d2, d1, data);
     }
-    
-	CudaSafeCall( cudaFree(tmp_int) );
 }
 
 template void transpose(int*, int, int, int);
