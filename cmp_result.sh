@@ -74,8 +74,10 @@ for ((i=0;i<${#PARAMS[@]};++i)) ; do
         #fi
         
         echo "Case $i"
-        echo "./test_213inplace ${PARAMS[$i]} > ~/testcaes/large/res_case$i.out"
-        ./test_213inplace ${PARAMS[$i]} ~/testcase/large/res_case$i.out
-		diff ~/testcase/large/ans_case$i.out ~/testcase/large/res_case$i.out
-		rm -f ~/testcase/large/res_case$i.out
+        echo "./test_213inplace ${PARAMS[$i]}"
+        nvprof --metrics achieved_occupancy ./test_213inplace ${PARAMS[$i]}
+        #echo "./test_213inplace ${PARAMS[$i]} > ~/testcaes/large/res_case$i.out"
+        #./test_213inplace ${PARAMS[$i]} ~/testcase/large/res_case$i.out
+		#diff ~/testcase/large/ans_case$i.out ~/testcase/large/res_case$i.out
+		#rm -f ~/testcase/large/res_case$i.out
 done

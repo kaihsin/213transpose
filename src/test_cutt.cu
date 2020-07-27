@@ -25,9 +25,9 @@ float cutt_plan(T* idata, T* odata, int* dim, int* permutation, size_t dataSize)
 	cuttHandle plan;
 	cuttCheck(cuttPlan(&plan, 3, dim, permutation, sizeof(T), 0));
     
-    int dev;
-    CudaSafeCall( cudaGetDevice(&dev) );
-    CudaSafeCall( cudaMemPrefetchAsync(idata, dataSize, dev, 0) );
+    //int dev;
+    //CudaSafeCall( cudaGetDevice(&dev) );
+    //CudaSafeCall( cudaMemPrefetchAsync(idata, dataSize, dev, 0) );
 	cuttCheck(cuttExecute(plan, idata, odata));
 	
 	CudaSafeCall( cudaDeviceSynchronize() );

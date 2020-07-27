@@ -1,6 +1,8 @@
 /build
 /testcase
 gen_ans
+gen_case
+gen_case.cpp
 read_bin
 src/read_bin.cpp
 test_213inplace
@@ -9,3 +11,4 @@ reduce.cu
 reduce.o
 reduce
 *.out
+deviceQuery

@@ -33,10 +33,11 @@ __global__ void coarse_col_rotate(F fn, int d3, reduced_divisor d2, int d1, T* d
     __shared__ T smem[32 * 16];
     int warp_id = threadIdx.x & 0x1f;
     
-    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
-    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
+    //size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
+    //size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
     size_t d1d2 = (size_t)d1 * (size_t)d2.get();
-    for (int k = l; k < r; k++) {
+    for (int k = blockIdx.x; k < d3; k += gridDim.x) {
+    //for (int k = l; k < r; k++) {
         size_t offset = k * d1d2;
         for (int col = threadIdx.x + blockIdx.y * blockDim.x; col < d1; col += gridDim.y * blockDim.x) {
             int rotation_amount = fn(fn.master(col, warp_id, 32));
@@ -100,11 +101,12 @@ __global__ void fine_col_rotate(F fn, int d3, int d2, int d1, T* d) {
 
     //If the whole warp is rotating by 0, early exit
     
-    size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
-    size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
+    //size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
+    //size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
     size_t d1d2 = (size_t)d1 * (size_t)d2;
     int warp_id = threadIdx.x & 0x1f;
-    for (int k = l; k < r; k++) {
+    for (int k = blockIdx.x; k < d3; k += gridDim.x) {
+    //for (int k = l; k < r; k++) {
         size_t offset = k * d1d2;
         for (int col = threadIdx.x + blockIdx.y * blockDim.x; col < d1; col += gridDim.y * blockDim.x) {
             //int col = threadIdx.x + blockIdx.x * blockDim.x;

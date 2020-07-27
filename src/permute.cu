@@ -30,7 +30,9 @@ void scatter_cycles(Fn f, int* heads, int* lens, vector_pair& vp) {
                 dest = f(idx);
                 len++;
             }
-            vp.push_back(std::make_pair(len, head));
+            if (len > 1) {
+                vp.push_back(std::make_pair(len, head));
+            }
         }
     }
     /*thrust::counting_iterator<int> i(0);
@@ -60,13 +62,14 @@ void scatter_cycles(Fn f, int* heads, int* lens, vector_pair& vp) {
         }
     }*/
     
-    std::make_heap(vp.begin(), vp.end());
-   // sort(vp.begin(), vp.end());
-    //reverse(vp.begin(), vp.end());
+    //std::make_heap(vp.begin(), vp.end());
+    sort(vp.begin(), vp.end());
     
-    for (size_t i = 0; i < vp.size(); i++) {
-        heads[i] = vp[i].second;
-        lens[i] = vp[i].first;
+    size_t n_heads = vp.size();
+    for (size_t i = 0; i < n_heads; i++) {
+        heads[i] = vp[n_heads - 1 - i].second;
+        lens[i] = vp[n_heads - 1 - i].first;
+        //printf("len[%zu] = %d\n", i, lens[i]);
     }
 }
 
