@@ -214,4 +214,16 @@ rotate.o build/rotate.d : src/rotate.cu \
     include/reduced_math.h \
     include/gcd.h \
     /usr/include/c++/7/cassert \
-    include/smem.h
+    include/smem.h \
+    /usr/include/c++/7/vector \
+    /usr/include/c++/7/bits/stl_construct.h \
+    /usr/include/c++/7/bits/stl_uninitialized.h \
+    /usr/include/c++/7/bits/stl_vector.h \
+    /usr/include/c++/7/bits/stl_bvector.h \
+    /usr/include/c++/7/bits/vector.tcc \
+    /usr/include/c++/7/algorithm \
+    /usr/include/c++/7/bits/stl_algo.h \
+    /usr/include/c++/7/bits/algorithmfwd.h \
+    /usr/include/c++/7/bits/stl_heap.h \
+    /usr/include/c++/7/bits/stl_tempbuf.h \
+    /usr/include/c++/7/bits/uniform_int_dist.h

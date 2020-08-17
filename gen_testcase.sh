@@ -2,8 +2,20 @@
 
 # $d1 $d2 $d3 $size_of_data_type
 
+PARAMS=("34 20220588 2 4"\
+        "68 10110294 2 4"\
+        "136 5055147 2 4"\
+        "272 2527573 2 4"\
+        "544 1263786 2 4"\
+        "1088 631893 2 4"\
+        "2176 315946 2 4"\
+        "4352 157973 2 4"\
+        "8704 78986 2 4"\
+        "17408 39493 2 4"
+)
 
-PARAMS=("34 34 1189446 4"\
+
+PARAMS1=("34 34 1189446 4"\
         "34 68 594723 4"\
         "34 136 297361 4"\
         "34 272 148680 4"\
@@ -28,12 +40,12 @@ PARAMS=("34 34 1189446 4"\
 
 
 
-if [ ! -d "./testcase/large" ]; then
-    mkdir -p ./testcase/large
+if [ ! -d "./testcase/large/fix_d3" ]; then
+    mkdir -p ./testcase/large/fix_d3
 fi
 
 for ((i=0;i<${#PARAMS[@]};++i)) ; do
         echo "Case $i"
-        echo "./gen_ans ${PARAMS[$i]} > ./testcase/large/ans_case$i.out"
-        ./gen_ans ${PARAMS[$i]} ./testcase/large/ans_case$i.out
+        echo "./gen_ans ${PARAMS[$i]} > ./testcase/large/fix_d3/ans_case$i.out"
+        ./gen_ans ${PARAMS[$i]} ./testcase/large/fix_d3/ans_case$i.out
     done

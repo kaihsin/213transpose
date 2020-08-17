@@ -40,10 +40,6 @@ void _213transpose(TensorUtil<T>& tu) {
 	CudaSafeCall( cudaEventRecord(start, 0) );
 	
 	//CudaSafeCall( cudaMemcpy(d_data, h_data, dataSize, cudaMemcpyHostToDevice) );
-    
-    int dev;
-    CudaSafeCall( cudaGetDevice(&dev) );
-    CudaSafeCall( cudaMemPrefetchAsync(d_data, dataSize, dev, 0) );
 	
 	int d1 = tu.dim[0];
 	int d2 = tu.dim[1];
@@ -62,6 +58,7 @@ void _213transpose(TensorUtil<T>& tu) {
     fclose(txtfp);
 	
     if (tu.fp != NULL) tu.write_file(d_data);
+	//tu.print_mat(d_data);
 	
 	CudaSafeCall( cudaFree(d_data) );
 }

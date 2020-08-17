@@ -13,18 +13,18 @@ int main(int argc, char** argv) {
     if (argc == 2) dump_raw = true;
 	vector<string> vec;
     printf("PARAMS=(");
-	size_t d1 = 34, d2 = 34, d3 = data_size / d1 / d2;
+	size_t d1 = 34, d3 = 2, d2 = data_size / d1 / d3;
     int type_size = 4;
 
-	while (d2 < data_size && d3 > 32) {
+	while (d1 < d2) {
         size_t vol = d1 * d2 * d3;
         assert(vol <= data_size);
         printf("\"%zu %zu %zu %d\"", d1, d2, d3, type_size);
 		sprintf(str, "(%zu, %zu, %zu)\n", d1, d2, d3);
         vec.push_back(str);
-		d2 <<= 1;
-		d3 >>= 1;
-        if (d3 > 32) printf("\\\n\t");
+		d2 >>= 1;
+		d1 <<= 1;
+        if (d1 < d2) printf("\\\n\t");
         else printf("\n)\n");
 	}
     

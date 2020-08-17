@@ -69,12 +69,13 @@ for ((i=0;i<${#PARAMS[@]};++i)) ; do
         #    continue
         #fi
         
-        #if [ $i -le 16 ]; then
-        #    continue
-        #fi
+        if [ $i -le 3 ]; then
+            continue
+        fi
         
         echo "Case $i"
         #echo "./test_213inplace ${PARAMS[$i]}"
+		#nvprof ./test_213inplace ${PARAMS[$i]}
         #nvprof --metrics achieved_occupancy ./test_213inplace ${PARAMS[$i]}
         echo "./test_213inplace ${PARAMS[$i]} > ~/testcaes/large/res_case$i.out"
         ./test_213inplace ${PARAMS[$i]} ~/testcase/large/res_case$i.out

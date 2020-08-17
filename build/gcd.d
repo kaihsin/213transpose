@@ -1,1 +1,1 @@
-gcd.o: src/gcd.cpp /usr/include/stdc-predef.h
+gcd.o build/gcd.d : src/gcd.cpp

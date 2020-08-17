@@ -26,6 +26,7 @@ void transpose(T* data, int d1, int d2, int d3) {
     }
 
     if (c > 1) {
+		printf("b = %d\n", d1/c);
         detail::rotate(detail::c2r::prerotator(d1/c), d3, d2, d1, data);
     }
     //printf("shuffle\n");
@@ -78,6 +79,10 @@ template void transpose(double*, int, int, int);
 
 template<typename T>
 void transpose(T* data, int d1, int d2, int d3) {
+	int dev;
+    CudaSafeCall( cudaGetDevice(&dev) );
+	size_t dataSize = (size_t)d1*(size_t)d2*(size_t)d3*sizeof(T);
+    CudaSafeCall( cudaMemPrefetchAsync(data, dataSize, dev, 0) );
     bool small_m = d2 <= 32;
     bool small_n = d1 <= 32;
 

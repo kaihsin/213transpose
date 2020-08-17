@@ -13,12 +13,13 @@ template<typename T, typename F>
 void enact(T* data, int d3, int d2, int d1, F s) {
 	size_t d1d2_size = d1 * d2 * sizeof(T);
 	size_t smem_bytes = sizeof(T) * (size_t)d1;
-	if (d1d2_size <= shared_mem_per_block()) {
+	/*if (d1d2_size <= shared_mem_per_block()) {
 		int n_threads = 1024;
 		int n_blocks = min(d3, get_num_block(small_d1d2_shuffle<T, F>, n_threads, d1d2_size));
+		printf("smem size = %zu\n", d1d2_size);
 		small_d1d2_shuffle<<<n_blocks, n_threads, d1d2_size>>>(d3, d2, d1, data, s);
 	}
-    else if (2 * d1 * sizeof(T) <= shared_mem_per_block() / 32) {
+    else*/ if (2 * d1 * sizeof(T) <= shared_mem_per_block() / 32) {
         //printf("compress row shuffle\n");
         int n_threads = get_num_thread(d1);
 		//int n_threads = 32;
@@ -34,7 +35,7 @@ void enact(T* data, int d3, int d2, int d1, F s) {
         printf("n_blocks = %d\n", n_blocks);
         smem_row_shuffle<<<n_blocks, n_threads, smem_bytes>>>(d3, d2, d1, data, s);
         check_error("smem shuffle");
-    } /*else if (sizeof(T) == 4 && d1 < 30720) {
+    } else if (sizeof(T) == 4 && d1 < 30720) {
         size_t d1d2 = (size_t)d1 * (size_t)d2;
         for (size_t i = 0; i < d3; i++) {
             size_t offset = i * d1d2;
@@ -53,7 +54,7 @@ void enact(T* data, int d3, int d2, int d1, F s) {
             <<<d2, 512>>>(d2, d1, data, s);
         check_error("register 58 shuffle");
         
-    }*/ else {
+    } else {
         printf("memory shuffle\n");
         int n_threads = get_num_thread(d1) ;
         printf("n_threads = %d\n", n_threads);

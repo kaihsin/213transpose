@@ -54,9 +54,9 @@ template void TensorUtil<double>::init_data(double*);
 template<typename T>
 void TensorUtil<T>::print_mat(T* data) {
 	for (size_t i = 0; i < vol; i++) {
-		fprintf(fp, "%-10d", (int)data[i]);
+		printf("%-6d", (int)data[i]);
 		for (int j = 1; j < rank; j++) {
-			if ((i + 1) % stride[j] == 0) fprintf(fp, "\n");
+			if ((i + 1) % stride[j] == 0) printf("\n");
 		}
 	}
 }
