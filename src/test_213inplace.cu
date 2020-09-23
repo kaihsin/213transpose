@@ -28,7 +28,7 @@ void _213transpose(TensorUtil<T>& tu) {
 	//T* h_data = (T*)malloc(vol * sizeof(T));
 	T* d_data = NULL;
 	size_t dataSize = vol * sizeof(T);
-    printf("Data size = %zu Bytes\n", dataSize);
+    printf("Data size = %.5f GB\n", (double)dataSize / 1e9);
 	CudaSafeCall( cudaMallocManaged(&d_data, dataSize) );
 	tu.init_data(d_data);
 	
@@ -52,7 +52,7 @@ void _213transpose(TensorUtil<T>& tu) {
 	CudaSafeCall( cudaEventSynchronize(stop) );
 	float t;
 	CudaSafeCall( cudaEventElapsedTime(&t, start, stop) );
-	printf("Time: %.5fms\n", t);
+	printf("Execution Time: %.5fms\nEffective Bandwidth: %.5fGB/s\n", t, ((double)dataSize * sizeof(T) * 2) / 1e6 / t);
     /*FILE* txtfp = fopen("time.txt", "a+");
     fprintf(txtfp, "%.5f\n", t);
     fclose(txtfp);*/

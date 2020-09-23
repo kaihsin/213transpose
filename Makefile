@@ -21,8 +21,8 @@ OBJTEST = $(OBJ_DIR)/test_213inplace.o
 		
 CC = g++
 NVCC = nvcc
-CPPFLAGS = -I$(INC_DIR) -std=c++14 -O3
-NVCCFLAGS = -arch=sm_61 -rdc=true
+CPPFLAGS = -I$(INC_DIR) -std=c++14 -lineinfo -O3
+NVCCFLAGS = -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_70,code=sm_70 -rdc=true
 
 all: mkdir lib/libinplacett.a test_213inplace
 
