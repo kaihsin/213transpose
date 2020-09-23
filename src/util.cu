@@ -7,6 +7,10 @@ int get_num_thread(int d1) {
     return static_cast<int>(min(n_threads, lim));
 }
 
+int low_bit(int x) {
+	return (x & (-x));
+}
+
 void Timer::start() {
     start_tp = clock::now();
 }

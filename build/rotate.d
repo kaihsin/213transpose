@@ -226,4 +226,6 @@ rotate.o build/rotate.d : src/rotate.cu \
     /usr/include/c++/7/bits/algorithmfwd.h \
     /usr/include/c++/7/bits/stl_heap.h \
     /usr/include/c++/7/bits/stl_tempbuf.h \
-    /usr/include/c++/7/bits/uniform_int_dist.h
+    /usr/include/c++/7/bits/uniform_int_dist.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/cooperative_groups.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/cooperative_groups_helpers.h

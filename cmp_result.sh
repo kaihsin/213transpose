@@ -2,7 +2,19 @@
 
 # $d1 $d2 $d3 $size_of_data_type
 
-PARAMS=("34 34 1189446 4"\
+PARAMS=("34 20220588 2 4"\
+        "68 10110294 2 4"\
+        "136 5055147 2 4"\
+        "272 2527573 2 4"\
+        "544 1263786 2 4"\
+        "1088 631893 2 4"\
+        "2176 315946 2 4"\
+        "4352 157973 2 4"\
+        "8704 78986 2 4"\
+        "17408 39493 2 4"
+)
+
+PARAMS3=("34 34 1189446 4"\
         "34 68 594723 4"\
         "34 136 297361 4"\
         "34 272 148680 4"\
@@ -17,7 +29,11 @@ PARAMS=("34 34 1189446 4"\
         "34 139264 290 4"\
         "34 278528 145 4"\
         "34 557056 72 4"\
-        "34 1114112 36 4"
+        "34 1114112 36 4"\
+		"34 2527572 16 4"\
+		"34 5055146 8 4"\
+		"34 10110294 4 4"\
+		"34 20220588 2 4"
 )
 
 PARAMS2=(        "343750000 2 2 4"\
@@ -69,16 +85,21 @@ for ((i=0;i<${#PARAMS[@]};++i)) ; do
         #    continue
         #fi
         
-        if [ $i -le 3 ]; then
-            continue
-        fi
+        #if [ $i -le 3 ]; then
+        #    continue
+        #fi
+		
+		#if [ $i -le 16 ]; then
+        #    continue
+        #fi
         
         echo "Case $i"
         #echo "./test_213inplace ${PARAMS[$i]}"
 		#nvprof ./test_213inplace ${PARAMS[$i]}
         #nvprof --metrics achieved_occupancy ./test_213inplace ${PARAMS[$i]}
-        echo "./test_213inplace ${PARAMS[$i]} > ~/testcaes/large/res_case$i.out"
-        ./test_213inplace ${PARAMS[$i]} ~/testcase/large/res_case$i.out
-		diff ~/testcase/large/ans_case$i.out ~/testcase/large/res_case$i.out
-		rm -f ~/testcase/large/res_case$i.out
+        #echo "./test_213inplace ${PARAMS[$i]} > ~/testcaes/large/res_case$i.out"
+		echo "./test_213inplace ${PARAMS[$i]} > ~/testcase/large/fix_d3/res_case$i.out"
+        ./test_213inplace ${PARAMS[$i]} ~/testcase/large/fix_d3/res_case$i.out
+		diff ~/testcase/large/fix_d3/ans_case$i.out ~/testcase/large/fix_d3/res_case$i.out
+		rm -f ~/testcase/large/fix_d3/res_case$i.out
 done

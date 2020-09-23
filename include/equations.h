@@ -53,6 +53,27 @@ struct shuffle {
     }
 };
 
+/*struct col_shuffle {
+    int m;
+	int n;
+	int a;
+    __host__
+    col_shuffle(int _m, int _n, int _a) : m(_m), n(_n), a(_a) {
+	}
+	int j;
+	__host__ __device__
+	void set_j(const int& _j) {
+        j = _j;
+    }    
+    __host__ __device__
+    int operator()(int i) const {
+        return (j + i * n - (i / a) + m) % m;
+    }
+    __host__ __device__
+    int len() const {
+        return m;
+    } 
+};*/
 
 struct prerotator {
     typedef int result_type;
@@ -60,7 +81,6 @@ struct prerotator {
     __host__ prerotator(int _b) : b(_b) {}
     __host__ __device__
     int operator()(int j) const {
-        assert(b.div(j) <= 2147483648);
         return b.div(j);
     }
     __host__ __device__
@@ -155,12 +175,10 @@ struct prerotator {
     }
 };
 
-
 struct shuffle {
-    /*reduced_divisor m;
+    reduced_divisor m;
     reduced_divisor n;
-    reduced_divisor b;*/
-    size_t m, n, b;
+    reduced_divisor b;
     __host__
     shuffle(int _m, int _n, int _c, int _k) : m(_m), n(_n), b(_n/_c) {}
     int i;
@@ -170,11 +188,8 @@ struct shuffle {
     }    
     __host__ __device__
     int operator()(const int& j) {
-        long long term1 = (j / b + i);
-        long long term2 = (long long)j * m;
-        return (term1 % m + term2) % n;
-        //int r = m.mod(b.div(j) + i) + j * (int)m.get();
-        //return n.mod(r);
+        int r = m.mod(b.div(j) + i) + j * (int)m.get();
+        return n.mod(r);
     }
 };
 

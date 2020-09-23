@@ -40,12 +40,12 @@ PARAMS1=("34 34 1189446 4"\
 
 
 
-if [ ! -d "./testcase/large/fix_d3" ]; then
-    mkdir -p ./testcase/large/fix_d3
+if [ ! -d "~/testcase/large/fix_d3" ]; then
+    mkdir -p ~/testcase/large/fix_d3
 fi
 
 for ((i=0;i<${#PARAMS[@]};++i)) ; do
         echo "Case $i"
-        echo "./gen_ans ${PARAMS[$i]} > ./testcase/large/fix_d3/ans_case$i.out"
-        ./gen_ans ${PARAMS[$i]} ./testcase/large/fix_d3/ans_case$i.out
+        echo "./gen_ans ${PARAMS[$i]} > ~/testcase/large/fix_d3/ans_case$i.out"
+        ./gen_ans ${PARAMS[$i]} ~/testcase/large/fix_d3/ans_case$i.out
     done

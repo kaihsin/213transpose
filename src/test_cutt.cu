@@ -23,7 +23,7 @@ float cutt_plan(T* idata, T* odata, int* dim, int* permutation, size_t dataSize)
 	CudaSafeCall( cudaEventRecord(start, 0) );
 	
 	cuttHandle plan;
-	cuttCheck(cuttPlan(&plan, 3, dim, permutation, sizeof(T), 0));
+	cuttCheck(cuttPlan(&plan, 2, dim, permutation, sizeof(T), 0));
     
     //int dev;
     //CudaSafeCall( cudaGetDevice(&dev) );
@@ -48,7 +48,7 @@ float cutt_plan_measure(T* idata, T* odata, int* dim, int* permutation, size_t d
 	CudaSafeCall( cudaEventRecord(start, 0) );
 	
 	cuttHandle plan;
-	cuttPlanMeasure(&plan, 3, dim, permutation, sizeof(T), 0, idata, odata);
+	cuttPlanMeasure(&plan, 2, dim, permutation, sizeof(T), 0, idata, odata);
     //int dev;
     //CudaSafeCall( cudaGetDevice(&dev) );
     //CudaSafeCall( cudaMemPrefetchAsync(idata, dataSize, dev, 0) );
@@ -72,8 +72,10 @@ void test_cutt(TensorUtil<T>& tu) {
 	CudaSafeCall( cudaMallocManaged(&i_data, dataSize) );
 	tu.init_data(i_data);
 	
-	int dim[3] = {(int)tu.dim[0], (int)tu.dim[1], (int)tu.dim[2]};
-	int permutation[3] = {1, 0, 2};
+	//int dim[3] = {(int)tu.dim[0], (int)tu.dim[1], (int)tu.dim[2]};
+	//int permutation[3] = {1, 0, 2};
+	int dim[2] = {(int)tu.dim[0], (int)tu.dim[1]};
+	int permutation[3] = {1, 0};
 	
 	//T* ans = (T*)malloc(dataSize);
 	//tu.seq_tt(ans, i_data);
@@ -111,18 +113,21 @@ int main(int argc, char** argv) {
 	int dim[3];
 	dim[0] = atoi(argv[1]);
 	dim[1] = atoi(argv[2]);
-	dim[2] = atoi(argv[3]);
-	int permutation[3] = {1, 0, 2};
+	//dim[2] = atoi(argv[3]);
+	//int permutation[3] = {1, 0, 2};
+	int permutation[2] = {1, 0};
 	//printf("Data Size = %lld bytes\n", (long long)dataSize);
 	
-	int type_size = atoi(argv[4]);
-	FILE* fp = (argc == 6)? fopen(argv[5], "wb") : stdout;
+	//int type_size = atoi(argv[4]);
+	//FILE* fp = (argc == 6)? fopen(argv[5], "wb") : stdout;
+	int type_size = atoi(argv[3]);
+	FILE* fp = (argc == 5)? fopen(argv[4], "wb") : stdout;
 	if (type_size == 4) {
-		TensorUtil<int> tu(fp, 3, dim, permutation);
+		TensorUtil<int> tu(fp, 2, dim, permutation);
 		test_cutt<int>(tu);
 	}
 	else {
-		TensorUtil<long long> tu(fp, 3, dim, permutation);
+		TensorUtil<long long> tu(fp, 2, dim, permutation);
 		test_cutt<long long>(tu);
 	}
 	if (fp != stdout) fclose(fp);

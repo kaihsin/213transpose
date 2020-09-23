@@ -12,3 +12,7 @@ reduce.o
 reduce
 *.out
 deviceQuery
+*.sh
+*.py
+rotate
+test_cutt

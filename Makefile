@@ -1,12 +1,13 @@
 INC_DIR = include
 SRC_DIR = src
 OBJ_DIR = build
-OBJSLIB = $(OBJ_DIR)/test_213inplace.o\
-		$(OBJ_DIR)/transpose.o\
+LIB_DIR = lib
+OBJSLIB = $(OBJ_DIR)/transpose.o\
 		$(OBJ_DIR)/introspect.o\
 		$(OBJ_DIR)/rotate.o\
 		$(OBJ_DIR)/permute.o\
 		$(OBJ_DIR)/shuffle.o\
+		$(OBJ_DIR)/col_shuffle.o\
 		$(OBJ_DIR)/skinny.o\
 		$(OBJ_DIR)/memory_ops.o\
 		$(OBJ_DIR)/smem_ops.o\
@@ -15,35 +16,26 @@ OBJSLIB = $(OBJ_DIR)/test_213inplace.o\
 		$(OBJ_DIR)/reduced_math.o\
 		$(OBJ_DIR)/cudacheck.o\
 		$(OBJ_DIR)/tensor_util.o\
-        $(OBJ_DIR)/util.o\
-
-OBJSGEN = $(OBJ_DIR)/gen_ans.o \
-		$(OBJ_DIR)/tensor_util.o
-
-OBJSCUTT = $(OBJ_DIR)/test_cutt.o \
-		$(OBJ_DIR)/tensor_util.o \
-		$(OBJ_DIR)/cudacheck.o \
-		../cutt/lib/libcutt.a
-
+        $(OBJ_DIR)/util.o
+OBJTEST = $(OBJ_DIR)/test_213inplace.o
+		
 CC = g++
 NVCC = nvcc
 CPPFLAGS = -I$(INC_DIR) -std=c++14 -O3
 NVCCFLAGS = -arch=sm_61 -rdc=true
 
-EXEC = test_213inplace gen_ans test_cutt
-all: mkdir test_213inplace
+all: mkdir lib/libinplacett.a test_213inplace
 
 mkdir:
 	mkdir -p $(OBJ_DIR)
 
-test_213inplace: $(OBJSLIB)
-	$(NVCC) $(NVCCFLAGS) -o $@ $^
-	
-gen_ans: $(OBJSGEN)
-	$(CC) $(CPPFLAGS) -o $@ $^
+test_213inplace: lib/libinplacett.a $(OBJTEST)
+	$(NVCC) $(NVCCFLAGS) -L$(LIB_DIR) -linplacett -o $@ $^
 
-test_cutt: $(OBJSCUTT)
-	$(NVCC) $(NVCCFLAGS) -L../cutt/lib -lcutt -o $@ $^
+lib/libinplacett.a: $(OBJSLIB)
+	mkdir -p $(LIB_DIR)
+	rm -f lib/libinplacett.a
+	ar -cvq lib/libinplacett.a $(OBJSLIB)
 	
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.cu $(OBJ_DIR)/%.d
 	$(NVCC) -c $(CPPFLAGS) $(NVCCFLAGS) -o $@ $<
@@ -66,4 +58,4 @@ $(OBJ_DIR)/%.d: $(SRC_DIR)/%.cpp
 -include $(OBJSLIB:.o=.d)
 	
 clean:
-	rm -f $(OBJ_DIR)/* $(EXEC)
+	rm -f $(OBJ_DIR)/* lib/* $(EXEC)

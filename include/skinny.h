@@ -1,3 +1,5 @@
+#include "reduced_math.h"
+
 #pragma once
 namespace inplace {
 namespace detail {

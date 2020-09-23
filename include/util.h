@@ -44,6 +44,8 @@ int get_num_block(F func, int n_threads, size_t smem_size) {
 
 int get_num_thread(int d1);
 
+int low_bit(int x);
+
 class Timer {
     using clock = std::chrono::high_resolution_clock;
     clock::time_point start_tp;

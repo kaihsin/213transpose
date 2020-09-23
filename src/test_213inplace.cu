@@ -53,9 +53,9 @@ void _213transpose(TensorUtil<T>& tu) {
 	float t;
 	CudaSafeCall( cudaEventElapsedTime(&t, start, stop) );
 	printf("Time: %.5fms\n", t);
-    FILE* txtfp = fopen("time.txt", "a+");
+    /*FILE* txtfp = fopen("time.txt", "a+");
     fprintf(txtfp, "%.5f\n", t);
-    fclose(txtfp);
+    fclose(txtfp);*/
 	
     if (tu.fp != NULL) tu.write_file(d_data);
 	//tu.print_mat(d_data);
@@ -64,6 +64,10 @@ void _213transpose(TensorUtil<T>& tu) {
 }
 
 int main(int argc, char** argv) {
+	if (argc != 5 && argc != 6) {
+		printf("Usage: [d1][d2][d3][Size of data type in byte][Output file]\nOutput file could be ignored\n");
+		return 0;
+	}
 	int dim[3];
 	dim[0] = atoi(argv[1]);
 	dim[1] = atoi(argv[2]);

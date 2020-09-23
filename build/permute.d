@@ -225,4 +225,9 @@ permute.o build/permute.d : src/permute.cu \
     /usr/include/c++/7/bits/algorithmfwd.h \
     /usr/include/c++/7/bits/stl_heap.h \
     /usr/include/c++/7/bits/stl_tempbuf.h \
-    /usr/include/c++/7/bits/uniform_int_dist.h
+    /usr/include/c++/7/bits/uniform_int_dist.h \
+    /usr/include/c++/7/queue \
+    /usr/include/c++/7/deque \
+    /usr/include/c++/7/bits/stl_deque.h \
+    /usr/include/c++/7/bits/deque.tcc \
+    /usr/include/c++/7/bits/stl_queue.h

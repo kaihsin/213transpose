@@ -4,6 +4,7 @@
 #include "smem.h"
 #include <vector>
 #include <algorithm>
+#include <cooperative_groups.h>
 
 namespace inplace {
 namespace detail {
@@ -29,251 +30,6 @@ unsigned int gcd(unsigned int x, unsigned int y) {
         y -= x;
     }
     return x << cf2;
-}
-
-/*
-template<typename F, typename T>
-__global__ void coarse(F fn, int d3, int d2, int d1, int master, T* d) {
-	size_t d1d2 = (size_t)d1 * (size_t)d2;
-	int col = threadIdx.x + master;
-	if (col < d1) {
-		int rotation_amount = d2 - fn(master);
-		if (rotation_amount > 0) {
-			int len = d2 / gridDim.x;
-			size_t k = blockIdx.x / d3;
-			size_t offset = k * d1d2;
-			int src = blockIdx.x % d3;
-			int src_tmp = d[offset + src * d1 + col];
-			int dest = (src + rotation_amount) % d2;
-			for (int i = 0; i < len; i++) {
-				int dest_tmp = d[offset + dest * d1 + col];
-				d[offset + dest * d1 + col] = src_tmp;
-				src = dest;
-				dest = (src + rotation_amount) % d2;
-				src_tmp = dest_tmp;
-			}
-		}
-	}
-}
-
-template<typename F, typename T>
-void coarse_launch(F fn, int d3, int d2, int d1, T* data) {
-	int n_threads = 32;
-	int num_blocks_d1 = div_up(d1, 32);
-	for (int i = 0; i < num_blocks_d1; i++) {
-		int master = i * 32;
-		int rotation_amount = d2 - fn(master);
-		if (rotation_amount > 0) {
-			int num_cycle = (rotation_amount == d2)? 0 : std::__gcd(rotation_amount, d2);
-			int n_blocks = num_cycle * d3;
-
-			coarse<<<n_blocks, n_threads>>>(fn, d3, d2, d1, master, data);
-		}
-	}
-	//coarse<<<grid_dim, n_threads>>>(fn, d3, d2, d1, data);
-}
-*/
-
-template<typename F, typename T>
-__global__ void coarse(F fn, int d3, int d2, int d1, int master, int num_cycle, int len, T* d) {
-	int col = threadIdx.x + master;
-	if (col < d1) {
-		int rotation_amount = d2 - fn(master);
-		size_t d1d2 = (size_t)d1 * (size_t)d2;
-		//size_t cycled3 = (size_t)num_cycle * (size_t)d3;
-		//for (size_t srck = blockIdx.x; srck < cycled3; srck += gridDim.x) {
-			size_t k = blockIdx.x / num_cycle;
-			size_t offset = k * d1d2;
-			
-			int src = blockIdx.x % num_cycle;
-			int src_tmp = d[offset + src * d1 + col];
-			int dest = (src + rotation_amount) % d2;
-			for (int i = 0; i < len; i++) {
-				int dest_tmp = d[offset + dest * d1 + col];
-				d[offset + dest * d1 + col] = src_tmp;
-				src = dest;
-				dest = (src + rotation_amount) % d2;
-				src_tmp = dest_tmp;
-			}
-		//}
-	}
-}
-
-template<typename F, typename T>
-void coarse_launch(F fn, int d3, int d2, int d1, T* data) {
-	int num_blocks_d1 = div_up(d1, 32);
-	for (int i = 0; i < num_blocks_d1; i++) {
-		int master = i * 32;
-		int n_threads = 32;
-		int rotation_amount = d2 - fn(master);
-		int num_cycle = (rotation_amount == d2)? 0 : std::__gcd(rotation_amount, d2);
-		if (num_cycle > 0) {
-			//int n_blocks = min(num_cycle * d3, get_num_block(coarse<F, T>, n_threads, 0));
-			int n_blocks = num_cycle * d3;
-			printf("num_cycle = %d\n", num_cycle);
-			printf("n_blocks = %d\n", n_blocks);
-			coarse<<<n_blocks, n_threads>>>(fn, d3, d2, d1, master, num_cycle, d2 / num_cycle, data);
-		}
-	}
-	//coarse<<<grid_dim, n_threads>>>(fn, d3, d2, d1, data);
-}
-
-/*template<typename F, typename T>
-__global__ void coarse(F fn, int d3, int d2, int d1, T* d, int* num_cycle) {
-	int warp_id = threadIdx.x;
-	size_t d1d2 = (size_t)d1 * (size_t)d2;
-	int col = threadIdx.x + blockIdx.y * blockDim.x;
-	if (col < d1) {
-		int rotation_amount = d2 - fn(fn.master(col, warp_id, 32));
-		if (rotation_amount > 0) {
-			//int c = gcd(rotation_amount, d2);
-			int c = num_cycle[blockIdx.y];
-			int len = d2 / c;
-			for (size_t k = blockIdx.x; k < d3; k += gridDim.x) {
-				size_t offset = k * d1d2;
-				for (int b = 0; b < c; b++) {
-					int src = b;
-					int src_tmp = d[offset + src * d1 + col];
-					int dest = (src + rotation_amount) % d2;
-					for (int i = 0; i < len; i++) {
-						int dest_tmp = d[offset + dest * d1 + col];
-						d[offset + dest * d1 + col] = src_tmp;
-						src = dest;
-						dest = (src + rotation_amount) % d2;
-						src_tmp = dest_tmp;
-					}
-				}
-			}
-		}
-	}
-}*/
-
-/*template<typename F, typename T>
-__global__ void coarse_col_rotate(F fn, int d3, reduced_divisor d2, int d1, T* d) {
-    __shared__ T smem[32 * 2];
-    int warp_id = threadIdx.x & 0x1f;
-    
-    //size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
-    //size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
-    size_t d1d2 = (size_t)d1 * (size_t)d2.get();
-    for (int k = blockIdx.x; k < d3; k += gridDim.x) {
-    //for (int k = l; k < r; k++) {
-        size_t offset = k * d1d2;
-        for (int col = threadIdx.x + blockIdx.y * blockDim.x; col < d1; col += gridDim.y * blockDim.x) {
-            int rotation_amount = fn(fn.master(col, warp_id, 32));
-            __syncthreads();
-            if (rotation_amount > 0) {
-                row_major_index rm(d2, d1);
-                int c = gcd(rotation_amount, d2.get());
-                int l = d2.get() / c;
-                size_t inc = d2.get() - rotation_amount;
-                int smem_write_idx = threadIdx.y * 32 + threadIdx.x;
-                int max_col = (l > 2) ? 1 : l - 1;
-                int smem_read_col = (threadIdx.y == 0) ? max_col : (threadIdx.y - 1);
-                int smem_read_idx = smem_read_col * 32 + threadIdx.x;
-                
-                for(int b = 0; b < c; b++) {
-                    size_t x = threadIdx.y;
-                    size_t pos = ((size_t)b + x * inc) % (size_t)d2.get();   // (b + x * inc) % d2
-                    //int pos = d2.mod(b + x * inc);   // (b + x * inc) % d2
-                    smem[smem_write_idx] = d[offset + rm(pos, col)];
-                    __syncthreads();
-                    T prior = smem[smem_read_idx];
-                    if (x < l) d[offset + rm(pos, col)] = prior;
-                    __syncthreads();
-                    int n_rounds = l / 2;
-                    for(int i = 1; i < n_rounds; i++) {
-                        x += blockDim.y;
-                        size_t pos = ((size_t)b + x * inc) % (size_t)d2.get();   // (b + x * inc) % d2
-                        //int pos = d2.mod(b + x * inc);            
-                        if (x < l) smem[smem_write_idx] = d[offset + rm(pos, col)];
-                        __syncthreads();
-                        T incoming = smem[smem_read_idx];
-                        T outgoing = (threadIdx.y == 0) ? prior : incoming;
-                        if (x < l) d[offset + rm(pos, col)] = outgoing;
-                        prior = incoming;
-                        __syncthreads();
-                    }
-                    //Last round/cleanup
-                    x += blockDim.y;
-                    pos = ((size_t)b + x * inc) % (size_t)d2.get();
-                    //pos = d2.mod(b + x * inc);
-                    if (x <= l) smem[smem_write_idx] = d[offset + rm(pos, col)];
-                    __syncthreads();
-                    int remainder_length = (l % 2);
-                    int fin_smem_read_col = (threadIdx.y == 0) ? remainder_length : threadIdx.y - 1;
-                    int fin_smem_read_idx = fin_smem_read_col * 32 + threadIdx.x;
-                    T incoming = smem[fin_smem_read_idx];
-                    T outgoing = (threadIdx.y == 0) ? prior : incoming;
-                    if (x <= l) d[offset + rm(pos, col)] = outgoing;
-                    
-                }
-            }
-        }
-    }
-}*/
-
-template<typename F, typename T>
-__global__ void coarse_col_rotate(F fn, int d3, int d2, int d1, int master, T* d, int num_cycle) {
-    __shared__ T smem[32 * 2];
-    int warp_id = threadIdx.x & 0x1f;
-    
-    //size_t l = chunk_left(blockIdx.x, gridDim.x, d3);
-    //size_t r = chunk_right(blockIdx.x, gridDim.x, d3);
-    size_t d1d2 = (size_t)d1 * (size_t)d2;
-	size_t cycled3 = (size_t)num_cycle * (size_t)d3;
-    //for (int k = l; k < r; k++) {
-		int col = threadIdx.x + master;
-        if (col < d1) {
-            int rotation_amount = fn(master);
-			row_major_index rm(d2, d1);
-			int l = d2 / num_cycle;
-			size_t inc = d2 - rotation_amount;
-			int smem_write_idx = threadIdx.y * 32 + threadIdx.x;
-			int max_col = (l > 2) ? 1 : l - 1;
-			int smem_read_col = (threadIdx.y == 0) ? max_col : (threadIdx.y - 1);
-			int smem_read_idx = smem_read_col * 32 + threadIdx.x;
-			
-		//for (size_t srck = blockIdx.x; srck < cycled3; srck += gridDim.x) {
-			size_t k = blockIdx.x / num_cycle;
-			size_t offset = k * d1d2;
-			int b = blockIdx.x % num_cycle;
-			//for(int b = 0; b < c; b++) {
-				size_t x = threadIdx.y;
-				size_t pos = ((size_t)b + x * inc) % (size_t)d2;   // (b + x * inc) % d2
-				//int pos = d2.mod(b + x * inc);   // (b + x * inc) % d2
-				smem[smem_write_idx] = d[offset + rm(pos, col)];
-				__syncthreads();
-				T prior = smem[smem_read_idx];
-				if (x < l) d[offset + rm(pos, col)] = prior;
-				int n_rounds = l / 2;
-				for(int i = 1; i < n_rounds; i++) {
-					x += blockDim.y;
-					pos = ((size_t)b + x * inc) % (size_t)d2;   // (b + x * inc) % d2
-					//int pos = d2.mod(b + x * inc);            
-					if (x < l) smem[smem_write_idx] = d[offset + rm(pos, col)];
-					__syncthreads();
-					T incoming = smem[smem_read_idx];
-					T outgoing = (threadIdx.y == 0) ? prior : incoming;
-					if (x < l) d[offset + rm(pos, col)] = outgoing;
-					prior = incoming;
-				}
-				//Last round/cleanup
-				x += blockDim.y;
-				pos = ((size_t)b + x * inc) % (size_t)d2;
-				//pos = d2.mod(b + x * inc);
-				if (x <= l) smem[smem_write_idx] = d[offset + rm(pos, col)];
-				int remainder_length = (l % 2);
-				int fin_smem_read_col = (threadIdx.y == 0) ? remainder_length : threadIdx.y - 1;
-				int fin_smem_read_idx = fin_smem_read_col * 32 + threadIdx.x;
-				__syncthreads();
-				T incoming = smem[fin_smem_read_idx];
-				T outgoing = (threadIdx.y == 0) ? prior : incoming;
-				if (x <= l) d[offset + rm(pos, col)] = outgoing;
-				
-			//}
-        //}
-    }
 }
 
 template<typename F, typename T>
@@ -379,32 +135,125 @@ __global__ void small_d1d2_rotate(F fn, int d3, int d2, int d1, T* d) {
 	}
 }
 
+template<typename T>
+__global__ void coarse(int d2, int d1, int start_col, int n_cycles, uint64_t rotation_amount, T* d) {
+	size_t col = threadIdx.x + start_col;
+	//for (size_t kst = blockIdx.x; kst < n_cycles * d3; kst += gridDim.x) {
+	//	size_t k = kst / n_cycles;
+	//	size_t offset = k * (size_t)d1 * (size_t)d2;
+	//	size_t start_row = kst % n_cycles;
+	//for (size_t col = threadIdx.x + start_col; col < d1; col += blockDim.x) {
+	size_t k = blockIdx.x / n_cycles;
+	size_t offset = k * (size_t)d1 * (size_t)d2;
+	size_t start_row = blockIdx.x % n_cycles;
+	size_t src = (start_row + threadIdx.y * rotation_amount) % d2;
+	T write_tmp = d[offset + src * d1 + col];
+	size_t dest = (src + rotation_amount) % d2;
+	
+	uint64_t inc = blockDim.y * rotation_amount;
+	size_t len = (d2 / n_cycles) / blockDim.y;
+	for (size_t i = 0; i < len; i++) {
+		size_t next = (src + inc) % d2;
+		T read_tmp = d[offset + next * d1 + col];
+		__syncthreads();
+		d[offset + dest * d1 + col] = write_tmp;
+		src = next;
+		dest = (src + rotation_amount) % d2;
+		write_tmp = read_tmp;
+	}
+	if (threadIdx.y < (d2 / n_cycles) % blockDim.y) {
+		d[offset + dest * d1 + col] = write_tmp;
+	}
+	//}
+	//}
+}
+
+template<typename T>
+__global__ void coarse_long_col(int d3, int d2, int d1, int master, int n_cycles, uint64_t rotation_amount, size_t start_row, T* d) {
+	namespace cg = cooperative_groups;
+    cg::grid_group g = cg::this_grid();
+
+	int col = threadIdx.x + master;
+	for (size_t k = 0; k < d3; k++) {
+		size_t offset = k * (size_t)d1 * (size_t)d2;
+		size_t src = (start_row + (blockIdx.x * blockDim.y + threadIdx.y) * rotation_amount) % d2;
+		T write_tmp = d[offset + src * d1 + col];
+		size_t dest = (src + rotation_amount) % d2;
+		
+		uint64_t inc = gridDim.x * blockDim.y * rotation_amount;
+		size_t len = (d2 / n_cycles) / (gridDim.x * blockDim.y);
+		for (size_t i = 0; i < len; i++) {
+			size_t next = (src + inc) % d2;
+			T read_tmp = d[offset + next * d1 + col];
+			g.sync();
+			d[offset + dest * d1 + col] = write_tmp;
+			src = next;
+			dest = (src + rotation_amount) % d2;
+			write_tmp = read_tmp;
+		}
+		if (threadIdx.y < (d2 / n_cycles) % (gridDim.x * blockDim.y)) {
+			d[offset + dest * d1 + col] = write_tmp;
+		}
+	}
+}
+
 template<typename F, typename T>
 void cycle_coarse_enact(F fn, int d3, int d2, int d1, T* data) {
-	int num_block_d1 = div_up(d1, 32);
-	for (int i = 0; i < num_block_d1; i++) {
-		int master = i * 32;
+	for (int col = 0; col < d1; col += 32) {
+		int master = fn.master(col, 0, 32);
 		int rotation_amount = d2 - fn(master);
-		int n_cycle = (rotation_amount == d2)? 0 : std::__gcd(rotation_amount, d2);
-		if (n_cycle <= 0) continue;
-		printf("n_cycle = %d, len = %d\n", n_cycle, d2 / n_cycle);
-		dim3 block_dim(32, 2);
-		int n_threads = block_dim.x * block_dim.y;
-		//int n_blocks = min(d3, get_num_block(coarse_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
-		int n_blocks = d3*n_cycle;//get_num_block(coarse_col_rotate<F, T>, n_threads, sizeof(T) * n_threads);
-		printf("n_blocks = %d\n", n_blocks);
-		coarse_col_rotate<<<n_blocks, block_dim>>>(fn, d3, d2, d1, master, data, n_cycle);
+		int n_cycles = (rotation_amount == d2)? 0 : std::__gcd(rotation_amount, d2);
+		if (n_cycles <= 0) continue;
+		int cycle_len = d2 / n_cycles;
+		int block_x = min(32, d1 - col);
+		int block_y = min(cycle_len, low_bit(1024 / block_x));
+		dim3 block_dim(block_x, block_y);
+		int n_blocks = d3 * n_cycles;
+		
+		coarse<<<n_blocks, block_dim>>>(d2, d1, col, n_cycles, rotation_amount, data);
+	}
+}
+
+template<typename F, typename T>
+__global__ void smem_col_rotate(F fn, int d3, int d2, int d1, T* data) {
+	T* smem = shared_memory<T>();
+	size_t d1d2 = (size_t)d1 * (size_t)d2;
+	for (size_t k = 0; k < d3; k++) {
+		size_t offset = k * d1d2;
+		for (size_t j = threadIdx.x + blockIdx.x * blockDim.x; j < d1; j += gridDim.x * blockDim.x) {
+			__syncthreads();
+			for (size_t i = threadIdx.y; i < d2; i += blockDim.y) {
+				int i_prim = (i - fn(j) + d2) % d2;
+				smem[i_prim * blockDim.x + threadIdx.x] = data[offset + i * d1 + j];
+			}
+			__syncthreads();
+			for (size_t i = threadIdx.y; i < d2; i += blockDim.y) {
+				data[offset + i * d1 + j] = smem[i * blockDim.x + threadIdx.x];
+			}
+		}
 	}
 }
 
 template<typename F, typename T>
 void rotate(F fn, int d3, int d2, int d1, T* data) {
-	size_t smem_size = d1 * d2 * sizeof(T);
-	if (smem_size <= shared_mem_per_block()) {
+	size_t smem_lim = shared_mem_per_block();
+	size_t smem_size;
+	if ((smem_size = d1 * d2 * sizeof(T)) <= smem_lim) {
 		//printf("small_d1d2_rotate\n");
 		int n_threads = 1024;
 		int n_blocks = min(d3, get_num_block(small_d1d2_rotate<F, T>, n_threads, smem_size));
 		small_d1d2_rotate<<<n_blocks, n_threads, smem_size>>>(fn, d3, d2, d1, data);
+	}
+	else if (smem_lim / (d2 * sizeof(T)) >= 32) {
+		//printf("smem_col_rotate\n");
+		int x_lim = smem_lim / (d2 * sizeof(T));
+		int n_threads_x = min(1024, (int)pow(2, (int)log2(x_lim)));
+		int n_threads_y = min(d2, 1024 / n_threads_x);
+		dim3 block_dim(n_threads_x, n_threads_y);
+		int n_threads = n_threads_x * n_threads_y;
+		smem_size = sizeof(T) * d2 * n_threads_x;
+		int n_blocks = min(div_up(d1, n_threads_x), get_num_block(smem_col_rotate<F, T>, n_threads, smem_size));
+		smem_col_rotate<<<n_blocks, block_dim, smem_size>>>(fn, d3, d2, d1, data);
 	}
 	else {
 		if (fn.fine()) {
@@ -416,17 +265,7 @@ void rotate(F fn, int d3, int d2, int d1, T* data) {
 			//printf("n_blocks = %d\n", get_num_block(fine_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
 			fine_col_rotate<<<grid_dim, block_dim>>>(fn, d3, d2, d1, data);
 		}
-		//dim3 block_dim(32, 2);
-		//int n_threads = block_dim.x * block_dim.y;
-		//int n_blocks_x = min(d3, get_num_block(coarse_col_rotate<F, T>, n_threads, sizeof(T) * n_threads));
-		//int n_blocks_y = (n_blocks_x + d3 - 1) / d3;
-		//dim3 grid_dim(n_blocks_x, n_blocks_y);
-		
 		cycle_coarse_enact(fn, d3, d2, d1, data);
-		//coarse_col_rotate<<<grid_dim, block_dim>>>(
-		//	fn, d3, d2, d1, data);
-		
-		//coarse_launch(fn, d3, d2, d1, data);
 	}
 }
 

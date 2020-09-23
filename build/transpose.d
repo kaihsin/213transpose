@@ -81,14 +81,41 @@ transpose.o build/transpose.d : src/transpose.cu \
     /usr/include/c++/7/cassert \
     include/skinny.h \
     include/shuffle.h \
-    /usr/include/c++/7/algorithm \
-    /usr/include/c++/7/utility \
-    /usr/include/c++/7/bits/stl_relops.h \
-    /usr/include/c++/7/bits/stl_pair.h \
-    /usr/include/c++/7/initializer_list \
+    include/col_shuffle.h \
+    include/util.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/cuda/error.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/version.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/config.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/simple_defines.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/compiler.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/cpp_dialect.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/cpp_compatibility.h \
+    /usr/include/c++/7/cstddef \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/host_system.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/device_system.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/host_device.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/debug.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/forceinline.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/exec_check_disable.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/config/global_workarounds.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/type_traits.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/type_traits/has_trivial_assign.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/error_code.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/errno.h \
+    /usr/include/c++/7/iostream \
+    /usr/include/c++/7/ostream \
+    /usr/include/c++/7/ios \
+    /usr/include/c++/7/iosfwd \
+    /usr/include/c++/7/bits/stringfwd.h \
+    /usr/include/c++/7/bits/memoryfwd.h \
+    /usr/include/c++/7/bits/postypes.h \
+    /usr/include/c++/7/cwchar \
+    /usr/include/c++/7/bits/char_traits.h \
     /usr/include/c++/7/bits/stl_algobase.h \
     /usr/include/c++/7/bits/functexcept.h \
     /usr/include/c++/7/ext/numeric_traits.h \
+    /usr/include/c++/7/bits/stl_pair.h \
     /usr/include/c++/7/bits/stl_iterator_base_types.h \
     /usr/include/c++/7/bits/stl_iterator_base_funcs.h \
     /usr/include/c++/7/debug/assertions.h \
@@ -96,15 +123,105 @@ transpose.o build/transpose.d : src/transpose.cu \
     /usr/include/c++/7/bits/ptr_traits.h \
     /usr/include/c++/7/debug/debug.h \
     /usr/include/c++/7/bits/predefined_ops.h \
+    /usr/include/c++/7/cstdint \
+    /usr/include/c++/7/bits/localefwd.h \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/c++locale.h \
+    /usr/include/c++/7/clocale \
+    /usr/include/c++/7/cctype \
+    /usr/include/c++/7/bits/ios_base.h \
+    /usr/include/c++/7/ext/atomicity.h \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/gthr.h \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/gthr-default.h \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/atomic_word.h \
+    /usr/include/c++/7/bits/locale_classes.h \
+    /usr/include/c++/7/string \
+    /usr/include/c++/7/bits/allocator.h \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/c++allocator.h \
+    /usr/include/c++/7/ext/new_allocator.h \
+    /usr/include/c++/7/bits/ostream_insert.h \
+    /usr/include/c++/7/bits/cxxabi_forced.h \
+    /usr/include/c++/7/bits/stl_function.h \
+    /usr/include/c++/7/backward/binders.h \
+    /usr/include/c++/7/bits/range_access.h \
+    /usr/include/c++/7/initializer_list \
+    /usr/include/c++/7/bits/basic_string.h \
+    /usr/include/c++/7/ext/alloc_traits.h \
+    /usr/include/c++/7/bits/alloc_traits.h \
+    /usr/include/c++/7/ext/string_conversions.h \
+    /usr/include/c++/7/cstdio \
+    /usr/include/c++/7/cerrno \
+    /usr/include/c++/7/bits/functional_hash.h \
+    /usr/include/c++/7/bits/basic_string.tcc \
+    /usr/include/c++/7/bits/locale_classes.tcc \
+    /usr/include/c++/7/system_error \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/error_constants.h \
+    /usr/include/c++/7/stdexcept \
+    /usr/include/c++/7/streambuf \
+    /usr/include/c++/7/bits/streambuf.tcc \
+    /usr/include/c++/7/bits/basic_ios.h \
+    /usr/include/c++/7/bits/locale_facets.h \
+    /usr/include/c++/7/cwctype \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/ctype_base.h \
+    /usr/include/c++/7/bits/streambuf_iterator.h \
+    /usr/include/x86_64-linux-gnu/c++/7/bits/ctype_inline.h \
+    /usr/include/c++/7/bits/locale_facets.tcc \
+    /usr/include/c++/7/bits/basic_ios.tcc \
+    /usr/include/c++/7/bits/ostream.tcc \
+    /usr/include/c++/7/istream \
+    /usr/include/c++/7/bits/istream.tcc \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/error_category.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/functional.h \
+    /usr/include/c++/7/functional \
+    /usr/include/c++/7/tuple \
+    /usr/include/c++/7/utility \
+    /usr/include/c++/7/bits/stl_relops.h \
+    /usr/include/c++/7/array \
+    /usr/include/c++/7/bits/uses_allocator.h \
+    /usr/include/c++/7/bits/invoke.h \
+    /usr/include/c++/7/bits/std_function.h \
+    /usr/include/c++/7/bits/refwrap.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/placeholder.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/actor.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/tuple.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/tuple.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/swap.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/pair.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/pair.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/value.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/composite.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/assignment_operator.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/operator_adaptors.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/type_traits/result_of_adaptable_function.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/type_traits/function_traits.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/type_traits/has_nested_type.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/actor.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/argument.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/arithmetic_operators.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/relational_operators.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/logical_operators.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/bitwise_operators.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/detail/functional/operators/compound_assignment_operators.h \
+    /usr/include/c++/7/cstring \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/error_code.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/error_condition.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/cuda/detail/guarded_driver_types.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/cuda/detail/error.inl \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/cuda/detail/guarded_cuda_runtime_api.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system_error.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/system_error.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/thrust/system/detail/system_error.inl \
+    include/cudacheck.h \
+    /usr/include/c++/7/chrono \
+    /usr/include/c++/7/ratio \
+    /usr/include/c++/7/limits \
+    /usr/include/c++/7/ctime \
+    /usr/include/c++/7/bits/parse_numbers.h \
+    /usr/include/c++/7/algorithm \
     /usr/include/c++/7/bits/stl_algo.h \
     /usr/include/c++/7/bits/algorithmfwd.h \
     /usr/include/c++/7/bits/stl_heap.h \
     /usr/include/c++/7/bits/stl_tempbuf.h \
     /usr/include/c++/7/bits/stl_construct.h \
-    /usr/include/c++/7/ext/alloc_traits.h \
-    /usr/include/c++/7/bits/alloc_traits.h \
-    /usr/include/c++/7/bits/memoryfwd.h \
-    /usr/include/c++/7/bits/uniform_int_dist.h \
-    /usr/include/c++/7/limits \
-    /usr/include/c++/7/cstdio \
-    include/cudacheck.h
+    /usr/include/c++/7/bits/uniform_int_dist.h

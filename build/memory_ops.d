@@ -71,6 +71,8 @@ memory_ops.o build/memory_ops.d : src/memory_ops.cu \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/texture_indirect_functions.h \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/surface_indirect_functions.h \
     /usr/local/cuda/bin/../targets/x86_64-linux/include/device_launch_parameters.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/cooperative_groups.h \
+    /usr/local/cuda/bin/../targets/x86_64-linux/include/cooperative_groups_helpers.h \
     include/equations.h \
     include/index.h \
     include/reduced_math.h \
